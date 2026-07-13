@@ -171,17 +171,17 @@ function ChatDemo() {
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden noise-overlay bg-background">
-      {/* Ambient orbs */}
-      <div className="orb-indigo w-[600px] h-[600px] -top-40 -left-32 opacity-60 pointer-events-none" />
-      <div className="orb-violet w-[400px] h-[400px] top-1/2 -translate-y-1/2 right-0 opacity-40 pointer-events-none" />
-      <div className="orb-amber w-[300px] h-[300px] bottom-0 left-1/3 opacity-30 pointer-events-none" />
+    <section className="relative min-h-screen flex items-center overflow-hidden bg-background">
+      {/* Ambient orbs — must be absolute to not affect flow */}
+      <div className="absolute -top-40 -left-32 w-[600px] h-[600px] rounded-full bg-indigo-500/20 blur-[120px] opacity-60 pointer-events-none" />
+      <div className="absolute top-1/2 -translate-y-1/2 -right-20 w-[400px] h-[400px] rounded-full bg-violet-500/20 blur-[100px] opacity-40 pointer-events-none" />
+      <div className="absolute bottom-0 left-1/3 w-[300px] h-[300px] rounded-full bg-amber-500/20 blur-[80px] opacity-30 pointer-events-none" />
 
       {/* Mesh gradient overlay */}
       <div className="absolute inset-0 mesh-gradient pointer-events-none" />
 
-      {/* Content — max-w-6xl with proper responsive grid */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 pt-24 pb-10 md:pt-28 md:pb-16">
+      {/* Content */}
+      <div className="relative z-10 w-full px-6 sm:px-10 lg:px-20 pt-24 pb-10 md:pt-28 md:pb-16">
         <div className="grid lg:grid-cols-[1fr_1fr] gap-10 lg:gap-16 items-center">
           {/* Left — Copy */}
           <motion.div
