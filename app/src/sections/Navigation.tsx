@@ -56,126 +56,125 @@ export function Navigation() {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className={cn(
-          'fixed top-0 left-0 right-0 z-50 transition-all duration-500'
-        )}
+        className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-4 px-6 lg:px-16 pointer-events-none"
       >
-        {/* Nav container with frosted glass */}
-        <div
+        {/* Floating pill container */}
+        <motion.div
+          animate={{
+            boxShadow: scrolled
+              ? '0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.06)'
+              : '0 2px 16px rgba(0,0,0,0.12), 0 0 0 1px rgba(255,255,255,0.04)',
+          }}
+          transition={{ duration: 0.3 }}
           className={cn(
-            'mx-auto mt-3 max-w-7xl transition-all duration-500',
-            scrolled
-              ? 'bg-card/85 backdrop-blur-xl border border-border rounded-2xl shadow-lg mx-4 lg:mx-auto'
-              : 'bg-transparent mx-4 lg:mx-auto'
+            'pointer-events-auto w-full max-w-5xl',
+            'flex items-center justify-between h-14 px-5',
+            'rounded-2xl border border-border/60',
+            'bg-card/80 backdrop-blur-xl',
+            'transition-all duration-300',
           )}
         >
-          <div className="flex items-center justify-between h-14 px-6 sm:px-10 lg:px-16 relative w-full">
-            {/* Left Side: Logo */}
-            <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group">
-              <img
-                src="/logonobg.png"
-                alt="M-Chat Logo"
-                className="w-8 h-8 transition-all duration-200 group-hover:scale-105 group-hover:drop-shadow-[0_4px_12px_rgba(99,102,241,0.4)]"
-              />
-              <span className="font-display font-bold text-[15px] tracking-tight text-foreground">
-                M-Chat
-              </span>
-            </Link>
+          {/* Left: Logo */}
+          <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group">
+            <img
+              src="/logonobg.png"
+              alt="M-Chat Logo"
+              className="w-8 h-8 transition-all duration-200 group-hover:scale-105 group-hover:drop-shadow-[0_4px_12px_rgba(99,102,241,0.4)]"
+            />
+            <span className="font-display font-bold text-[15px] tracking-tight text-foreground">
+              M-Chat
+            </span>
+          </Link>
 
-            {/* Center: Desktop Nav */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex items-center gap-0.5">
-              {NAV_LINKS.map((link) =>
-                link.href.startsWith('#') ? (
-                  <button
-                    key={link.label}
-                    onClick={() => handleNavClick(link.href)}
-                    className="px-3 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/40 inline-flex items-center justify-center h-9"
-                  >
-                    {link.label}
-                  </button>
-                ) : (
-                  <Link
-                    key={link.label}
-                    to={link.href}
-                    className="px-3 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/40 inline-flex items-center justify-center h-9"
-                  >
-                    {link.label}
-                  </Link>
-                )
-              )}
-            </div>
-
-            {/* Right Side */}
-            <div className="flex items-center gap-1 ml-auto">
-              {/* Theme toggle */}
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-all inline-flex items-center justify-center h-9 w-9"
-                aria-label="Toggle theme"
-                title={isDark ? 'Switch to light' : 'Switch to dark'}
-              >
-                {isDark ? (
-                  <Sun size={15} strokeWidth={1.5} />
-                ) : (
-                  <Moon size={15} strokeWidth={1.5} />
-                )}
-              </button>
-
-              {isAuthenticated ? (
-                <div className="hidden sm:flex items-center gap-1">
-                  {role === 'admin' && (
-                    <Link
-                      to="/admin"
-                      className="px-3 py-1.5 text-[13px] text-red-500 hover:bg-muted/40 rounded-lg transition-colors"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <Sparkles size={13} strokeWidth={1.5} />
-                        Admin
-                      </span>
-                    </Link>
-                  )}
-                  <Link
-                    to="/chat"
-                    className="ml-1 px-4 py-2 rounded-lg text-[13px] font-semibold bg-indigo-500 text-white hover:bg-indigo-600 transition-all shadow-sm shadow-indigo-500/30 inline-flex items-center justify-center h-9"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <MessageSquare size={13} strokeWidth={1.5} />
-                      Open Chat
-                    </span>
-                  </Link>
-                </div>
+          {/* Center: Desktop Nav Links */}
+          <div className="hidden md:flex items-center gap-0.5">
+            {NAV_LINKS.map((link) =>
+              link.href.startsWith('#') ? (
+                <button
+                  key={link.label}
+                  onClick={() => handleNavClick(link.href)}
+                  className="px-3 py-1.5 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/40 inline-flex items-center justify-center"
+                >
+                  {link.label}
+                </button>
               ) : (
-                <div className="hidden sm:flex items-center gap-1.5">
-                  <Link
-                    to="/login"
-                    className="px-4 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 rounded-lg transition-colors inline-flex items-center justify-center h-9"
-                  >
-                    Log in
-                  </Link>
-                  <Link
-                    to="/signup"
-                    className="px-4 py-2 rounded-lg text-[13px] font-semibold bg-foreground text-background hover:opacity-90 transition-opacity inline-flex items-center justify-center h-9"
-                  >
-                    Get Started
-                  </Link>
-                </div>
-              )}
-
-              {/* Mobile menu button */}
-              <button
-                onClick={() => setMobileOpen(!mobileOpen)}
-                className="md:hidden p-2 rounded-lg text-muted-foreground hover:bg-muted/40 transition-colors ml-1"
-                aria-label="Toggle menu"
-              >
-                {mobileOpen ? (
-                  <X size={18} strokeWidth={1.5} />
-                ) : (
-                  <Menu size={18} strokeWidth={1.5} />
-                )}
-              </button>
-            </div>
+                <Link
+                  key={link.label}
+                  to={link.href}
+                  className="px-3 py-1.5 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/40 inline-flex items-center justify-center"
+                >
+                  {link.label}
+                </Link>
+              )
+            )}
           </div>
-        </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-1">
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-all inline-flex items-center justify-center h-9 w-9"
+              aria-label="Toggle theme"
+              title={isDark ? 'Switch to light' : 'Switch to dark'}
+            >
+              {isDark ? (
+                <Sun size={15} strokeWidth={1.5} />
+              ) : (
+                <Moon size={15} strokeWidth={1.5} />
+              )}
+            </button>
+
+            {isAuthenticated ? (
+              <div className="hidden sm:flex items-center gap-1">
+                {role === 'admin' && (
+                  <Link
+                    to="/admin"
+                    className="px-3 py-1.5 text-[13px] text-red-500 hover:bg-muted/40 rounded-lg transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <Sparkles size={13} strokeWidth={1.5} />
+                    Admin
+                  </Link>
+                )}
+                <Link
+                  to="/chat"
+                  className="ml-1 px-4 py-2 rounded-xl text-[13px] font-semibold bg-indigo-500 text-white hover:bg-indigo-600 transition-all shadow-sm shadow-indigo-500/30 inline-flex items-center gap-1.5 h-9"
+                >
+                  <MessageSquare size={13} strokeWidth={1.5} />
+                  Open Chat
+                </Link>
+              </div>
+            ) : (
+              <div className="hidden sm:flex items-center gap-1.5">
+                <Link
+                  to="/login"
+                  className="px-4 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 rounded-lg transition-colors inline-flex items-center justify-center h-9"
+                >
+                  Log in
+                </Link>
+                <Link
+                  to="/signup"
+                  className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-foreground text-background hover:opacity-90 transition-opacity inline-flex items-center justify-center h-9"
+                >
+                  Get Started
+                </Link>
+              </div>
+            )}
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="md:hidden p-2 rounded-lg text-muted-foreground hover:bg-muted/40 transition-colors ml-1 inline-flex items-center justify-center"
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? (
+                <X size={18} strokeWidth={1.5} />
+              ) : (
+                <Menu size={18} strokeWidth={1.5} />
+              )}
+            </button>
+          </div>
+        </motion.div>
       </motion.nav>
 
       {/* Mobile Menu */}
