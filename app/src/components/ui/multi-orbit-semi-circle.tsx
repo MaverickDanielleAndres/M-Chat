@@ -54,16 +54,16 @@ function SemiCircleOrbit({ radius, centerX, centerY, count, iconSize }: any) {
             }}
           >
             <div 
-              className="flex items-center justify-center rounded-full bg-[#0a0a10] border border-white/10 shadow-[0_4_15px_rgba(0,0,0,0.5)] cursor-pointer transition-all duration-300 group-hover:scale-125 group-hover:bg-[#12121a] group-hover:border-[var(--m-accent-blue)] group-hover:shadow-[0_0_25px_rgba(99,102,241,0.4)]" 
+              className="flex items-center justify-center rounded-full bg-card border border-white/10 shadow-[0_4_15px_rgba(0,0,0,0.5)] cursor-pointer transition-all duration-300 group-hover:scale-125 group-hover:bg-[#12121a] group-hover:border-[var(--m-accent-blue)] group-hover:shadow-[0_0_25px_rgba(99,102,241,0.4)]" 
               style={{ width: iconSize, height: iconSize }}
             >
-              <icon.icon size={iconSize * 0.5} className="text-white/50 transition-colors duration-300 group-hover:text-white drop-shadow-md" />
+              <icon.icon size={iconSize * 0.5} className="text-foreground/50 transition-colors duration-300 group-hover:text-foreground drop-shadow-md" />
             </div>
 
             {/* Tooltip */}
             <div
               className={`absolute ${tooltipAbove ? "bottom-[calc(100%+8px)]" : "top-[calc(100%+8px)]"
-                } hidden group-hover:block whitespace-nowrap rounded-lg bg-[#080810] border border-white/[0.08] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl text-center`}
+                } hidden group-hover:block whitespace-nowrap rounded-lg bg-card border border-border px-2.5 py-1.5 text-xs font-medium text-foreground shadow-xl text-center`}
             >
               {icon.name}
               <div
@@ -102,8 +102,8 @@ export default function MultiOrbitSemiCircle() {
   return (
     <section className="py-10 md:py-16 relative min-h-[60vh] w-full overflow-hidden">
       <div className="relative flex flex-col items-center text-center z-10">
-        <h1 className="my-6 text-2xl md:text-3xl font-display font-bold text-[var(--m-text-primary)]">Model Ecosystem</h1>
-        <p className="mb-12 max-w-2xl text-[var(--m-text-secondary)] text-sm md:text-base">
+        <h1 className="my-6 text-2xl md:text-3xl font-display font-bold text-foreground">Model Ecosystem</h1>
+        <p className="mb-12 max-w-2xl text-muted-foreground text-sm md:text-base">
           Chat with OpenAI, Claude, Gemini, and more, all from one intelligent workspace.
         </p>
 

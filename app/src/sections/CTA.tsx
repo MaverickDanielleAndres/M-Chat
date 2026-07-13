@@ -24,12 +24,12 @@ export function CTA() {
           <div className="absolute inset-0 bg-gradient-to-br from-[var(--m-accent-blue)]/10 via-transparent to-[#a78bfa]/8" />
 
           {/* Ambient orbs inside card */}
-          <div className="absolute top-0 left-1/4 w-64 h-64 rounded-full bg-[var(--m-accent-blue)]/15 blur-3xl" />
+          <div className="absolute top-0 left-1/4 w-64 h-64 rounded-full bg-indigo-500/15 blur-3xl" />
           <div className="absolute bottom-0 right-1/4 w-64 h-64 rounded-full bg-[#a78bfa]/12 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-[var(--m-accent-amber)]/5 blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-amber-500/5 blur-3xl" />
 
           {/* Border */}
-          <div className="absolute inset-0 rounded-3xl border border-white/[0.07]" />
+          <div className="absolute inset-0 rounded-3xl border border-border" />
 
           {/* Grid texture */}
           <div
@@ -46,7 +46,7 @@ export function CTA() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={inView ? { opacity: 1, scale: 1 } : {}}
               transition={{ duration: 0.4, delay: 0.15 }}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] font-medium mb-6 border border-[var(--m-accent-blue)]/20 bg-[var(--m-accent-blue)]/8 text-[var(--m-accent-blue)]"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] font-medium mb-6 border border-indigo-500/20 bg-indigo-500/8 text-indigo-500"
             >
               <Sparkles size={11} strokeWidth={2} />
               Free to start — no credit card
@@ -56,7 +56,7 @@ export function CTA() {
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.55, delay: 0.2 }}
-              className="text-[clamp(2rem,4.5vw,3.5rem)] font-display font-bold text-white leading-tight tracking-tight mb-5"
+              className="text-[clamp(2rem,4.5vw,3.5rem)] font-display font-bold text-foreground leading-tight tracking-tight mb-5"
             >
               Ready to think{' '}
               <span className="shimmer-text">faster?</span>
@@ -66,7 +66,7 @@ export function CTA() {
               initial={{ opacity: 0, y: 12 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-[15px] text-white/50 max-w-md mx-auto mb-10 leading-relaxed"
+              className="text-[15px] text-foreground/50 max-w-md mx-auto mb-10 leading-relaxed"
             >
               Join thousands of professionals using M-Chat daily to code faster,
               research smarter, and create more.
@@ -80,14 +80,14 @@ export function CTA() {
             >
               <Link
                 to="/chat"
-                className="group inline-flex items-center gap-2.5 px-8 py-4 rounded-xl text-[14px] font-semibold bg-[var(--m-accent-blue)] text-white hover:bg-[#4f52e0] transition-all duration-200 shadow-lg shadow-[var(--m-accent-blue)]/30 hover:shadow-[var(--m-accent-blue)]/50 hover:-translate-y-0.5"
+                className="group inline-flex items-center gap-2.5 px-8 py-4 rounded-xl text-[14px] font-semibold bg-indigo-500 text-foreground hover:bg-[#4f52e0] transition-all duration-200 shadow-lg shadow-indigo-500/30 hover:shadow-[var(--m-accent-blue)]/50 hover:-translate-y-0.5"
               >
                 Start for free
                 <ArrowRight size={15} strokeWidth={2} className="group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <Link
                 to="/signup"
-                className="inline-flex items-center gap-2 px-7 py-4 rounded-xl text-[14px] font-medium border border-white/[0.1] text-white/70 hover:text-white hover:border-white/[0.2] hover:bg-white/[0.04] transition-all duration-200"
+                className="inline-flex items-center gap-2 px-7 py-4 rounded-xl text-[14px] font-medium border border-border text-foreground/70 hover:text-foreground hover:border-white/[0.2] hover:bg-muted/40 transition-all duration-200"
               >
                 Create free account
               </Link>
@@ -98,7 +98,7 @@ export function CTA() {
               initial={{ opacity: 0 }}
               animate={inView ? { opacity: 1 } : {}}
               transition={{ duration: 0.5, delay: 0.55 }}
-              className="mt-8 text-[12px] text-white/25"
+              className="mt-8 text-[12px] text-foreground/25"
             >
               Trusted by engineers at Stripe, Linear, Vercel, Anthropic & more
             </motion.p>

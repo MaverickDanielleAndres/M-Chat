@@ -52,17 +52,17 @@ export function Capabilities() {
   return (
     <section id="features" className="py-16 md:py-24 relative overflow-hidden" style={{ backgroundColor: 'var(--m-bg-base)' }}>
       {/* Subtle background element */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[var(--m-accent-blue)]/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-5xl mx-auto px-6 relative z-10">
         <div className="mb-12">
-          <p className="text-[11px] font-bold tracking-widest text-[var(--m-accent-blue)] uppercase mb-3">
+          <p className="text-[11px] font-bold tracking-widest text-indigo-500 uppercase mb-3">
             Capabilities
           </p>
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-[var(--m-text-primary)] mb-4 tracking-tight">
+          <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4 tracking-tight">
             30+ AI capabilities
           </h2>
-          <p className="text-sm md:text-base text-[var(--m-text-secondary)]">
+          <p className="text-sm md:text-base text-muted-foreground">
             From text and code to images and video. M-Chat handles it all.
           </p>
         </div>
@@ -75,10 +75,10 @@ export function Capabilities() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.4, delay: i * 0.02 }}
-              className="group flex items-center gap-3 px-4 py-3 rounded-xl border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/[0.08] transition-all duration-300 cursor-default"
+              className="group flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-white/[0.01] hover:bg-muted/40 hover:border-border transition-all duration-300 cursor-default"
             >
-              <cap.icon size={14} className="text-[var(--m-accent-blue)] group-hover:scale-110 transition-transform duration-300" strokeWidth={1.5} />
-              <span className="text-[12px] font-medium text-[var(--m-text-primary)] group-hover:text-white transition-colors">
+              <cap.icon size={14} className="text-indigo-500 group-hover:scale-110 transition-transform duration-300" strokeWidth={1.5} />
+              <span className="text-[12px] font-medium text-foreground group-hover:text-foreground transition-colors">
                 {cap.label}
               </span>
             </motion.div>

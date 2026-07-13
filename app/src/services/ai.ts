@@ -6,10 +6,23 @@ export interface AIStreamChunk {
   done: boolean;
 }
 
+/**
+ * Heuristic check: a real Google Gemini API key starts with `AIza` and is ~39
+ * characters long. Anything else is almost certainly a placeholder / wrong env
+ * value (e.g. `AQ.…` from Qwen) and will return 401 / RESOURCE_EXHAUSTED.
+ */
+export function isValidGeminiKey(key: string | undefined | null): boolean {
+  if (!key) return false;
+  const trimmed = key.trim();
+  return trimmed.startsWith('AIza') && trimmed.length >= 30;
+}
+
 // ---------------------------------------------------------------------------
-// Helper – convert a File to base64 inline data for Gemini multimodal input
+// file -> inline data helper
 // ---------------------------------------------------------------------------
-async function fileToInlineData(file: File): Promise<{ inlineData: { data: string; mimeType: string } }> {
+async function fileToInlineData(
+  file: File
+): Promise<{ inlineData: { data: string; mimeType: string } }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -36,33 +49,28 @@ class GeminiProvider implements AIProvider {
     this.ai = new GoogleGenAI({ apiKey });
   }
 
-  /**
-   * Sends all conversation messages to Gemini and returns a ReadableStream<Uint8Array>
-   * that is already formatted as SSE so the existing parseSSEStream() util works unchanged.
-   */
-  async sendMessage(messages: ChatMessage[], attachments?: File[]): Promise<ReadableStream<Uint8Array>> {
+  async sendMessage(
+    messages: ChatMessage[],
+    attachments?: File[]
+  ): Promise<ReadableStream<Uint8Array>> {
     const encoder = new TextEncoder();
 
-    // Build Gemini content array from conversation history
     const history = messages.slice(0, -1).map((m) => ({
       role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: m.content }],
     }));
 
-    // Last message is the new user turn
     const lastMessage = messages[messages.length - 1];
-    const userParts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
-      { text: lastMessage.content },
-    ];
+    const userParts: Array<
+      { text: string } | { inlineData: { data: string; mimeType: string } }
+    > = [{ text: lastMessage.content }];
 
-    // Attach files if any
     if (attachments && attachments.length > 0) {
       for (const file of attachments) {
         try {
-          const inlineData = await fileToInlineData(file);
-          userParts.push(inlineData);
+          userParts.push(await fileToInlineData(file));
         } catch {
-          // Skip files that can't be read
+          /* skip files that can't be read */
         }
       }
     }
@@ -79,7 +87,6 @@ class GeminiProvider implements AIProvider {
 
     const response = await chat.sendMessageStream({ message: userParts as any });
 
-    // Wrap the async generator into a ReadableStream<Uint8Array> of SSE chunks
     return new ReadableStream<Uint8Array>({
       async start(controller) {
         try {
@@ -136,9 +143,11 @@ export function createAIProvider(providerId: string, apiKey: string): AIProvider
 }
 
 // ---------------------------------------------------------------------------
-// Parse SSE stream – unchanged, works for both Qwen format and our new wrapper
+// parseSSEStream
 // ---------------------------------------------------------------------------
-export async function* parseSSEStream(stream: ReadableStream<Uint8Array>): AsyncGenerator<AIStreamChunk> {
+export async function* parseSSEStream(
+  stream: ReadableStream<Uint8Array>
+): AsyncGenerator<AIStreamChunk> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -176,11 +185,98 @@ export async function* parseSSEStream(stream: ReadableStream<Uint8Array>): Async
   }
 }
 
+/**
+ * Custom error class that signals when the upstream provider rejected the
+ * request (invalid key, quota exceeded, rate limited, etc.). The store
+ * catches this to surface a friendly toast and switch to demo mode.
+ */
+export class AIProviderError extends Error {
+  status?: number;
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = 'AIProviderError';
+    this.status = status;
+  }
+}
+
+/**
+ * Inspect an error caught from the Gemini provider and decide whether it's a
+ * recoverable upstream error (key invalid / quota / rate limit). Returns a
+ * normalized `AIProviderError` we can show to the user.
+ */
+export function classifyAIError(err: unknown): AIProviderError {
+  const raw = err instanceof Error ? err.message : String(err);
+  const statusMatch = raw.match(/\b(\d{3})\b/);
+  const status = statusMatch ? Number(statusMatch[1]) : undefined;
+  const lower = raw.toLowerCase();
+  if (
+    status === 429 ||
+    lower.includes('quota') ||
+    lower.includes('rate limit') ||
+    lower.includes('resource_exhausted')
+  ) {
+    return new AIProviderError(
+      'Gemini API quota exceeded. Falling back to demo mode — set a valid VITE_GEMINI_API_KEY in .env to enable real AI.',
+      429
+    );
+  }
+  if (status === 401 || status === 403 || lower.includes('api key')) {
+    return new AIProviderError(
+      'Gemini API key is invalid. Falling back to demo mode — check VITE_GEMINI_API_KEY in .env.',
+      status ?? 401
+    );
+  }
+  if (status && status >= 500) {
+    return new AIProviderError(
+      'Gemini service is unavailable right now. Falling back to demo mode.',
+      status
+    );
+  }
+  return new AIProviderError(
+    raw || 'Unexpected error from AI provider. Falling back to demo mode.'
+  );
+}
+
 // ---------------------------------------------------------------------------
-// Fallback demo stream when no API key is configured
+// Demo / fallback stream
 // ---------------------------------------------------------------------------
-export function createDemoStream(_message: string): ReadableStream<Uint8Array> {
-  const response = `Hello! I'm **M-Chat**, your AI assistant powered by **Gemini AI**.\n\nIt looks like you haven't configured an API key yet. To use the full AI capabilities:\n\n1. Get your free API key from [Google AI Studio](https://aistudio.google.com/app/apikey)\n2. Open your \`.env\` file and set:\n   \`\`\`\n   VITE_GEMINI_API_KEY=your-key-here\n   \`\`\`\n3. Restart the dev server\n\nIn the meantime, I'm running in **demo mode**. How can I help you today?`;
+export interface DemoStreamOptions {
+  reason?: string;
+  userPrompt?: string;
+}
+
+/**
+ * Generates a helpful demo / fallback stream used when:
+ *   - no API key is configured
+ *   - the configured key is malformed (not a real Gemini key)
+ *   - the upstream provider rejected the request (quota / 401 / 5xx)
+ *
+ * The response is still useful: it acknowledges the user's prompt, points
+ * them at the configuration step, and offers to keep going.
+ */
+export function createDemoStream(opts: DemoStreamOptions | string = {}): ReadableStream<Uint8Array> {
+  const options: DemoStreamOptions = typeof opts === 'string' ? { userPrompt: opts } : opts;
+  const userPrompt = options.userPrompt?.trim() || 'your message';
+  const reason = options.reason;
+
+  let response: string;
+  if (reason) {
+    response =
+      `I received your message — *"${userPrompt.slice(0, 240)}"* — but I'm currently running in **fallback (demo) mode** because:\n\n` +
+      `> ${reason}\n\n` +
+      `### How to enable the real AI\n\n` +
+      `1. Get a free API key from [Google AI Studio](https://aistudio.google.com/app/apikey).\n` +
+      `2. Open \`.env\` and set:\n` +
+      `   \`\`\`\n   VITE_GEMINI_API_KEY=your-key-here\n   \`\`\`\n` +
+      `3. Restart the dev server (\`npm run dev\`).\n\n` +
+      `Once a valid key is configured, the Gemini 2.0 Flash model will answer here in full.`;
+  } else {
+    response =
+      `Hello! I'm **M-Chat**, your AI assistant powered by **Gemini AI**.\n\nIt looks like you haven't configured an API key yet. To use the full AI capabilities:\n\n` +
+      `1. Get your free API key from [Google AI Studio](https://aistudio.google.com/app/apikey).\n` +
+      `2. Open your \`.env\` file and set:\n   \`\`\`\n   VITE_GEMINI_API_KEY=your-key-here\n   \`\`\`\n` +
+      `3. Restart the dev server.\n\nIn the meantime, I'm running in **demo mode**. How can I help you today?`;
+  }
 
   const encoder = new TextEncoder();
   const chunks = response.split('');
@@ -201,7 +297,50 @@ export function createDemoStream(_message: string): ReadableStream<Uint8Array> {
         });
         controller.enqueue(encoder.encode(`data: ${data}\n\n`));
         i += 3;
-      }, 20);
+      }, 18);
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Send a single message with automatic fallback. This is the high-level entry
+// point the store should use — it handles:
+//   - detecting malformed keys and skipping Gemini entirely
+//   - catching upstream errors (quota / 401 / 5xx) and falling back to demo
+//   - normalising thrown errors into AIProviderError
+//
+// Returns the raw stream AND a `usedFallback` flag plus the reason, so the
+// UI can show a non-blocking toast.
+// ---------------------------------------------------------------------------
+export interface SendMessageResult {
+  stream: ReadableStream<Uint8Array>;
+  usedFallback: boolean;
+  fallbackReason?: string;
+}
+
+export async function sendMessageWithFallback(
+  messages: ChatMessage[],
+  attachments: File[] | undefined,
+  userPrompt: string
+): Promise<SendMessageResult> {
+  const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+  if (!isValidGeminiKey(apiKey)) {
+    return {
+      stream: createDemoStream({ reason: 'No valid Gemini API key configured.', userPrompt }),
+      usedFallback: true,
+      fallbackReason: 'No valid Gemini API key configured',
+    };
+  }
+  try {
+    const provider = createAIProvider('gemini', apiKey);
+    const stream = await provider.sendMessage(messages, attachments);
+    return { stream, usedFallback: false };
+  } catch (err) {
+    const classified = classifyAIError(err);
+    return {
+      stream: createDemoStream({ reason: classified.message, userPrompt }),
+      usedFallback: true,
+      fallbackReason: classified.message,
+    };
+  }
 }

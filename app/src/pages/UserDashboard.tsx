@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'framer-motion';
-import { User, Settings, CreditCard, LogOut, MessageSquare, HardDrive, Zap, Crown, Shield, ChevronRight, Loader2, Save, Moon, Sun, Monitor } from 'lucide-react';
+import { User, Settings, CreditCard, LogOut, MessageSquare, Zap, Crown, Shield, ChevronRight, Loader2, Save, Moon, Sun, Monitor, Calendar } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { cn } from '@/lib/utils';
 import type { ThemeMode } from '@/types';
@@ -85,9 +85,9 @@ export function UserDashboard() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                 <div className="grid sm:grid-cols-3 gap-3">
                   {[
-                    { label: 'Prompts', value: profile?.prompt_count || 0, icon: MessageSquare, color: 'var(--m-accent-blue)' },
-                    { label: 'Storage', value: `${((profile?.storage_used || 0) / 1024 / 1024).toFixed(1)} MB`, icon: HardDrive, color: 'var(--m-accent-green)' },
-                    { label: 'Plan', value: (profile?.subscription_tier || 'free'), icon: Crown, color: tierColors[profile?.subscription_tier || 'free'] },
+                    { label: 'Tier', value: (profile?.subscription_tier || 'free'), icon: Crown, color: tierColors[profile?.subscription_tier || 'free'] },
+                    { label: 'Role', value: profile?.role || 'user', icon: User, color: 'var(--m-accent-blue)' },
+                    { label: 'Member since', value: profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : '—', icon: Calendar, color: 'var(--m-accent-green)' },
                   ].map((s) => (
                     <div key={s.label} className="p-4 rounded-2xl border border-white/[0.04] bg-[var(--m-bg-elevated)]">
                       <div className="flex items-center gap-2 mb-2">

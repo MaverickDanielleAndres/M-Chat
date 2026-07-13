@@ -4,10 +4,10 @@ import { motion } from "framer-motion";
 export function FUIBentoGridDark() {
   return (
     <div className="py-10 md:py-16 container mx-auto min-w-screen flex flex-col px-6">
-      <h1 className="font-display font-bold tracking-tight text-3xl md:text-4xl text-[var(--m-text-primary)] text-center mx-auto">
+      <h1 className="font-display font-bold tracking-tight text-3xl md:text-4xl text-foreground text-center mx-auto">
         Superpowers
       </h1>
-      <p className="max-w-3xl text-lg font-medium tracking-tight mt-2 text-[var(--m-text-secondary)] text-center mx-auto">
+      <p className="max-w-3xl text-lg font-medium tracking-tight mt-2 text-muted-foreground text-center mx-auto">
         Everything you need to build the future.
       </p>
       
@@ -84,11 +84,11 @@ export function BentoCard({
       variants={{ idle: {}, active: {} }}
       className={clsx(
         className,
-        "group relative flex flex-col overflow-hidden rounded-xl border border-white/[0.08]",
-        "bg-[var(--m-bg-card)] shadow-lg shadow-black/20"
+        "group relative flex flex-col overflow-hidden rounded-xl border border-border",
+        "bg-card shadow-lg shadow-black/20"
       )}
     >
-      <div className="relative h-[22rem] sm:h-[26rem] shrink-0 bg-[#0a0a10]">
+      <div className="relative h-[22rem] sm:h-[26rem] shrink-0 bg-card">
         {graphic}
         {fade.includes("top") && (
           <div className="absolute inset-0 bg-gradient-to-b from-[var(--m-bg-card)] to-50% opacity-25" />
@@ -99,14 +99,14 @@ export function BentoCard({
       </div>
       
       {/* Increased padding and height to ensure text fits */}
-      <div className="relative p-5 sm:p-6 z-20 isolate mt-[-80px] h-auto min-h-[10rem] bg-[#0c0c14]/80 backdrop-blur-xl border-t border-white/[0.05]">
-        <h3 className="text-[11px] font-bold uppercase tracking-widest text-[var(--m-accent-blue)]">
+      <div className="relative p-5 sm:p-6 z-20 isolate mt-[-80px] h-auto min-h-[10rem] bg-card/80 backdrop-blur-xl border-t border-border">
+        <h3 className="text-[11px] font-bold uppercase tracking-widest text-indigo-500">
           {eyebrow}
         </h3>
-        <p className="mt-1 text-lg sm:text-xl font-bold tracking-tight text-[var(--m-text-primary)]">
+        <p className="mt-1 text-lg sm:text-xl font-bold tracking-tight text-foreground">
           {title}
         </p>
-        <p className="mt-2 text-sm text-[var(--m-text-secondary)] leading-relaxed">
+        <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
           {description}
         </p>
       </div>

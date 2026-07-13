@@ -11,7 +11,7 @@ export function Pricing() {
   const inView = useInView(ref, { once: true, margin: '-60px' });
 
   return (
-    <section id="pricing" className="py-32 bg-[#050507] relative">
+    <section id="pricing" className="py-32 bg-background relative">
       <div className="max-w-6xl mx-auto px-6">
         <motion.div
           ref={ref}
@@ -20,19 +20,19 @@ export function Pricing() {
           transition={{ duration: 0.5 }}
           className="mb-16 text-center"
         >
-          <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-[var(--m-accent-blue)] mb-3">
+          <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-indigo-500 mb-3">
             Pricing
           </p>
-          <h2 className="text-[clamp(1.75rem,3.5vw,2.5rem)] font-semibold text-[var(--m-text-primary)] leading-tight tracking-tight mb-4">
+          <h2 className="text-[clamp(1.75rem,3.5vw,2.5rem)] font-semibold text-foreground leading-tight tracking-tight mb-4">
             Simple pricing
           </h2>
           <div className="flex items-center justify-center gap-3">
-            <div className="inline-flex p-0.5 rounded-lg bg-[var(--m-bg-card)] border border-white/[0.04]">
+            <div className="inline-flex p-0.5 rounded-lg bg-card border border-border">
               <button
                 onClick={() => setYearly(false)}
                 className={cn(
                   'px-3 py-1 rounded-md text-[12px] font-medium transition-all',
-                  !yearly ? 'bg-[var(--m-text-primary)] text-[var(--m-text-inverse)]' : 'text-[var(--m-text-secondary)]'
+                  !yearly ? 'bg-[var(--m-text-primary)] text-background' : 'text-muted-foreground'
                 )}
               >
                 Monthly
@@ -41,11 +41,11 @@ export function Pricing() {
                 onClick={() => setYearly(true)}
                 className={cn(
                   'px-3 py-1 rounded-md text-[12px] font-medium transition-all flex items-center gap-1',
-                  yearly ? 'bg-[var(--m-text-primary)] text-[var(--m-text-inverse)]' : 'text-[var(--m-text-secondary)]'
+                  yearly ? 'bg-[var(--m-text-primary)] text-background' : 'text-muted-foreground'
                 )}
               >
                 Yearly
-                <span className="text-[9px] text-[var(--m-accent-green)]">-20%</span>
+                <span className="text-[9px] text-emerald-500">-20%</span>
               </button>
             </div>
           </div>
@@ -61,37 +61,37 @@ export function Pricing() {
               className={cn(
                 'relative rounded-2xl border p-6 flex flex-col',
                 plan.highlight
-                  ? 'border-[var(--m-accent-blue)]/20 bg-[var(--m-accent-blue-soft)]'
-                  : 'border-white/[0.04] bg-[var(--m-bg-card)]/30'
+                  ? 'border-indigo-500/20 bg-indigo-500/10'
+                  : 'border-border bg-card/30'
               )}
             >
               {plan.highlight && (
                 <div className="absolute -top-2.5 left-4">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--m-accent-blue)] text-white">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500 text-foreground">
                     Popular
                   </span>
                 </div>
               )}
 
-              <h3 className="text-[15px] font-semibold text-[var(--m-text-primary)] mb-0.5">
+              <h3 className="text-[15px] font-semibold text-foreground mb-0.5">
                 {plan.name}
               </h3>
-              <p className="text-[12px] text-[var(--m-text-muted)] mb-5">
+              <p className="text-[12px] text-muted-foreground mb-5">
                 {plan.description}
               </p>
 
               <div className="mb-5">
-                <span className="text-3xl font-semibold text-[var(--m-text-primary)]">
+                <span className="text-3xl font-semibold text-foreground">
                   ${yearly ? plan.price_yearly : plan.price_monthly}
                 </span>
-                <span className="text-[13px] text-[var(--m-text-muted)]">/mo</span>
+                <span className="text-[13px] text-muted-foreground">/mo</span>
               </div>
 
               <ul className="space-y-2.5 mb-6 flex-1">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-[13px]">
-                    <Check size={14} strokeWidth={1.5} className="text-[var(--m-accent-green)] flex-shrink-0 mt-0.5" />
-                    <span className="text-[var(--m-text-secondary)]">{f}</span>
+                    <Check size={14} strokeWidth={1.5} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground">{f}</span>
                   </li>
                 ))}
               </ul>
@@ -101,8 +101,8 @@ export function Pricing() {
                 className={cn(
                   'w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-medium transition-all',
                   plan.highlight
-                    ? 'bg-[var(--m-accent-blue)] text-white hover:opacity-90'
-                    : 'border border-white/[0.08] text-[var(--m-text-primary)] hover:bg-white/[0.04]'
+                    ? 'bg-indigo-500 text-foreground hover:opacity-90'
+                    : 'border border-border text-foreground hover:bg-muted/40'
                 )}
               >
                 {plan.price_monthly === 0 ? 'Get Started' : 'Subscribe'}

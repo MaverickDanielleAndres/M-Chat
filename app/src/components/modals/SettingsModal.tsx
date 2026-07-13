@@ -1,142 +1,217 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sun, Moon, Monitor, Type, Zap, Volume2, Code, Trash2, Download, Upload, RotateCcw, AlertTriangle } from 'lucide-react';
+import {
+  X,
+  Sun,
+  Moon,
+  Monitor,
+  Zap,
+  Code,
+  Trash2,
+  Download,
+  Upload,
+  RotateCcw,
+  AlertTriangle,
+  Settings as SettingsIcon,
+  Palette,
+  Sparkles,
+  Eye,
+  EyeOff,
+  Keyboard,
+  Bell,
+  User,
+  CreditCard,
+  Database,
+  Wallet,
+  TrendingUp,
+} from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { cn } from '@/lib/utils';
-import type { ThemeMode } from '@/types';
+import type { ThemeMode, AppSettings } from '@/types';
+import { Link } from 'react-router';
+
+type Tab = 'general' | 'appearance' | 'chat' | 'account' | 'data';
+
+const ACCENT_PRESETS = [
+  '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
+  '#f97316', '#f59e0b', '#22c55e', '#14b8a6',
+  '#0ea5e9', '#64748b',
+];
 
 export function SettingsModal() {
-  const { settings, settingsOpen, toggleSettings, updateSettings, exportData, importData, resetEverything, addToast } = useStore();
-  const [tab, setTab] = useState<'general' | 'data'>('general');
+  const {
+    settings,
+    settingsOpen,
+    toggleSettings,
+    updateSettings,
+    setTheme,
+    resetSettings,
+    exportData,
+    importData,
+    resetEverything,
+    addToast,
+    wallet,
+    profile,
+  } = useStore();
+  const [tab, setTab] = useState<Tab>('general');
   const [confirmReset, setConfirmReset] = useState(false);
+  const [showCustomInstr, setShowCustomInstr] = useState(false);
 
   const handleExport = () => {
     const data = exportData();
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `m-chat-backup-${Date.now()}.json`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-    addToast({ type: 'success', message: 'Exported' });
+    a.href = url;
+    a.download = `m-chat-backup-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    addToast({ type: 'success', message: 'Data exported' });
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       const ok = importData(ev.target?.result as string);
       addToast({ type: ok ? 'success' : 'error', message: ok ? 'Imported' : 'Failed' });
     };
-    reader.readAsText(file); e.target.value = '';
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   if (!settingsOpen) return null;
 
+  const tabs: { id: Tab; label: string; icon: any }[] = [
+    { id: 'general', label: 'General', icon: SettingsIcon },
+    { id: 'appearance', label: 'Appearance', icon: Palette },
+    { id: 'chat', label: 'Chat', icon: Sparkles },
+    { id: 'account', label: 'Account', icon: User },
+    { id: 'data', label: 'Data', icon: Database },
+  ];
+
+  const tier = (profile?.subscription_tier as string) ?? 'free';
+  const tierLabel =
+    tier === 'pro' ? 'Pro'
+    : tier === 'premium' ? 'Premium'
+    : tier === 'admin' ? 'Admin'
+    : tier === 'developer' ? 'Developer'
+    : 'Free';
+
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-        onClick={toggleSettings}>
-        <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        onClick={toggleSettings}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="w-full max-w-md max-h-[85vh] overflow-hidden rounded-2xl border border-white/[0.06] bg-[var(--m-bg-elevated)] shadow-2xl"
-          onClick={(e) => e.stopPropagation()} data-dialog>
-
+          className="w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-2xl border border-border bg-card shadow-2xl flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+          data-dialog
+        >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.04]">
-            <h2 className="text-[15px] font-semibold text-[var(--m-text-primary)]">Settings</h2>
-            <button onClick={toggleSettings} className="p-1.5 rounded-lg hover:bg-white/[0.04] text-[var(--m-text-muted)] transition-colors"><X size={16} strokeWidth={1.5} /></button>
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-border flex-shrink-0">
+            <h2 className="text-[15px] font-semibold flex items-center gap-2 text-foreground">
+              <SettingsIcon size={15} className="text-indigo-500" />
+              Settings
+            </h2>
+            <button
+              onClick={toggleSettings}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-colors flex-shrink-0"
+              aria-label="Close settings"
+            >
+              <X size={16} />
+            </button>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-0 px-6 pt-4 border-b border-white/[0.04]">
-            {(['general', 'data'] as const).map((t) => (
-              <button key={t} onClick={() => setTab(t)}
-                className={cn('px-4 py-2.5 text-[13px] font-medium capitalize transition-colors border-b-2', tab === t ? 'border-[var(--m-accent-blue)] text-[var(--m-accent-blue)]' : 'border-transparent text-[var(--m-text-muted)] hover:text-[var(--m-text-secondary)]')}>
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {/* Content */}
-          <div className="p-6 overflow-y-auto max-h-[60vh]">
-            {tab === 'general' && (
-              <div className="space-y-6">
-                <div>
-                  <label className="text-[13px] font-medium text-[var(--m-text-primary)] mb-3 block">Theme</label>
-                  <div className="flex gap-2">
-                    {([{ v: 'light' as ThemeMode, i: Sun, l: 'Light' }, { v: 'dark' as ThemeMode, i: Moon, l: 'Dark' }, { v: 'system' as ThemeMode, i: Monitor, l: 'System' }]).map(({ v, i: Icon, l }) => (
-                      <button key={v} onClick={() => updateSettings({ theme: v })}
-                        className={cn('flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] border transition-all', settings.theme === v ? 'border-[var(--m-accent-blue)]/30 bg-[var(--m-accent-blue-soft)] text-[var(--m-accent-blue)]' : 'border-white/[0.06] text-[var(--m-text-muted)] hover:text-[var(--m-text-primary)]')}>
-                        <Icon size={14} strokeWidth={1.5} /><span className="hidden sm:inline">{l}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[13px] font-medium text-[var(--m-text-primary)] mb-3 block flex items-center gap-2"><Type size={14} strokeWidth={1.5} className="text-[var(--m-text-muted)]" /> Font Size</label>
-                  <div className="flex gap-2">
-                    {(['small', 'medium', 'large'] as const).map((s) => (
-                      <button key={s} onClick={() => updateSettings({ fontSize: s })}
-                        className={cn('flex-1 py-2.5 rounded-xl text-[13px] capitalize border transition-all', settings.fontSize === s ? 'border-[var(--m-accent-blue)]/30 bg-[var(--m-accent-blue-soft)] text-[var(--m-accent-blue)]' : 'border-white/[0.06] text-[var(--m-text-muted)] hover:text-[var(--m-text-primary)]')}>{s}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Toggle icon={Zap} label="Animations" desc="UI animations" enabled={settings.animationsEnabled} onChange={(v: boolean) => updateSettings({ animationsEnabled: v })} />
-                  <Toggle icon={Volume2} label="Sound" desc="Notification sounds" enabled={settings.soundEnabled} onChange={(v: boolean) => updateSettings({ soundEnabled: v })} />
-                  <Toggle icon={Code} label="Developer Mode" desc="Show API stats" enabled={settings.developerMode} onChange={(v: boolean) => updateSettings({ developerMode: v })} />
-                </div>
-              </div>
-            )}
-
-            {tab === 'data' && (
-              <div className="space-y-2">
-                {[
-                  { icon: Download, label: 'Export Data', desc: 'Download all data', action: handleExport, color: 'var(--m-accent-blue)' },
-                  { icon: Upload, label: 'Import Data', desc: 'Restore from backup', action: () => document.getElementById('import-file')?.click(), color: 'var(--m-accent-green)' },
-                  { icon: RotateCcw, label: 'Reset Settings', desc: 'Restore defaults', action: () => updateSettings({ theme: 'system', animationsEnabled: true, soundEnabled: true, developerMode: false, fontSize: 'medium' }), color: 'var(--m-text-muted)' },
-                ].map((item) => (
-                  <button key={item.label} onClick={item.action}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/[0.04] hover:bg-white/[0.02] transition-colors text-left">
-                    <item.icon size={16} strokeWidth={1.5} style={{ color: item.color }} />
-                    <div>
-                      <p className="text-[13px] font-medium text-[var(--m-text-primary)]">{item.label}</p>
-                      <p className="text-[11px] text-[var(--m-text-muted)]">{item.desc}</p>
-                    </div>
+          {/* Body */}
+          <div className="flex flex-1 min-h-0">
+            {/* Side tabs */}
+            <nav className="hidden sm:flex flex-col w-44 border-r border-border p-2 gap-0.5 flex-shrink-0">
+              {tabs.map((t) => {
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors text-left',
+                      tab === t.id
+                        ? 'bg-muted text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                    )}
+                  >
+                    <Icon size={14} />
+                    {t.label}
                   </button>
-                ))}
-                <input id="import-file" type="file" accept=".json" onChange={handleImport} className="hidden" />
+                );
+              })}
+            </nav>
 
-                <div className="border-t border-white/[0.04] pt-3 mt-3">
-                  {!confirmReset ? (
-                    <button onClick={() => setConfirmReset(true)}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--m-accent-red)]/20 hover:bg-[var(--m-accent-red)]/5 transition-colors text-left">
-                      <Trash2 size={16} strokeWidth={1.5} className="text-[var(--m-accent-red)]" />
-                      <div>
-                        <p className="text-[13px] font-medium text-[var(--m-accent-red)]">Reset Everything</p>
-                        <p className="text-[11px] text-[var(--m-text-muted)]">Delete all data</p>
-                      </div>
-                    </button>
-                  ) : (
-                    <div className="p-4 rounded-xl bg-[var(--m-accent-red)]/5 border border-[var(--m-accent-red)]/15">
-                      <div className="flex items-start gap-2 mb-3">
-                        <AlertTriangle size={16} className="text-[var(--m-accent-red)] flex-shrink-0 mt-0.5" />
-                        <p className="text-[12px] text-[var(--m-accent-red)]">This permanently deletes all data.</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => { resetEverything(); setConfirmReset(false); toggleSettings(); addToast({ type: 'info', message: 'All data reset' }); }}
-                          className="flex-1 py-2 rounded-lg text-[12px] font-medium text-white bg-[var(--m-accent-red)] hover:opacity-90 transition-opacity">Confirm</button>
-                        <button onClick={() => setConfirmReset(false)}
-                          className="flex-1 py-2 rounded-lg text-[12px] font-medium border border-white/[0.06] text-[var(--m-text-primary)] hover:bg-white/[0.03] transition-colors">Cancel</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Tab bar mobile */}
+            <div className="sm:hidden flex overflow-x-auto px-2 py-2 border-b border-border gap-1 flex-shrink-0 w-full">
+              {tabs.map((t) => {
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium flex-shrink-0',
+                      tab === t.id ? 'bg-muted text-foreground' : 'text-muted-foreground'
+                    )}
+                  >
+                    <Icon size={12} />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-5">
+              {tab === 'general' && <GeneralTab wallet={wallet} tier={tier} tierLabel={tierLabel} />}
+              {tab === 'appearance' && (
+                <AppearanceTab settings={settings} setTheme={setTheme} updateSettings={updateSettings} />
+              )}
+              {tab === 'chat' && (
+                <ChatTab
+                  settings={settings}
+                  updateSettings={updateSettings}
+                  showCustomInstr={showCustomInstr}
+                  setShowCustomInstr={setShowCustomInstr}
+                />
+              )}
+              {tab === 'account' && <AccountTab tier={tier} tierLabel={tierLabel} />}
+              {tab === 'data' && (
+                <DataTab
+                  onExport={handleExport}
+                  onImport={handleImport}
+                  onResetSettings={async () => {
+                    await resetSettings();
+                    addToast({ type: 'success', message: 'Settings reset' });
+                  }}
+                  confirmReset={confirmReset}
+                  setConfirmReset={setConfirmReset}
+                  onResetEverything={async () => {
+                    await resetEverything();
+                    setConfirmReset(false);
+                    toggleSettings();
+                    addToast({ type: 'info', message: 'All data reset' });
+                  }}
+                />
+              )}
+            </div>
           </div>
         </motion.div>
       </motion.div>
@@ -144,21 +219,593 @@ export function SettingsModal() {
   );
 }
 
-function Toggle({ icon: Icon, label, desc, enabled, onChange }: any) {
+// ---------------------------------------------------------------------------
+// tabs
+// ---------------------------------------------------------------------------
+function GeneralTab({
+  wallet,
+  tier,
+  tierLabel,
+}: {
+  wallet: { balance: number; daily_quota: number; daily_used: number };
+  tier: string;
+  tierLabel: string;
+}) {
+  const unlimited = wallet.daily_quota === -1;
+  const pct = unlimited
+    ? 100
+    : Math.min(100, Math.round((wallet.daily_used / Math.max(1, wallet.daily_quota)) * 100));
+
   return (
-    <div className="flex items-center justify-between py-2">
-      <div className="flex items-center gap-3">
-        <Icon size={15} strokeWidth={1.5} className="text-[var(--m-text-muted)]" />
-        <div>
-          <p className="text-[13px] font-medium text-[var(--m-text-primary)]">{label}</p>
-          <p className="text-[11px] text-[var(--m-text-muted)]">{desc}</p>
+    <div className="space-y-6">
+      {/* Usage */}
+      <Section title="Usage">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                <TrendingUp size={15} className="text-indigo-500" />
+              </div>
+              <div>
+                <p className="text-[12px] text-muted-foreground">Daily quota</p>
+                <p className="text-lg font-semibold leading-tight">
+                  {unlimited ? '∞' : `${wallet.daily_used}`}
+                  <span className="text-muted-foreground text-[12px] font-normal">
+                    {' '}/ {unlimited ? 'unlimited' : `${wallet.daily_quota} prompts`}
+                  </span>
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 font-medium uppercase tracking-wider">
+              {tierLabel}
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mb-2">
+            <div
+              className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Wallet size={11} /> Balance: {wallet.balance} credits
+            </span>
+            {tier === 'free' || tier === 'registered' ? (
+              <Link to="/upgrade" className="text-indigo-500 hover:underline">
+                Upgrade for unlimited
+              </Link>
+            ) : (
+              <span className="text-emerald-500">Unlimited</span>
+            )}
+          </div>
+        </div>
+      </Section>
+
+      <Section title="About">
+        <p className="text-[13px] text-muted-foreground">
+          M-Chat is a multi-modal AI workspace. Chat, generate, and analyze — all in one place.
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-1.5">Version 1.0 · Built with Qwen AI</p>
+      </Section>
+
+      <Section title="Keyboard shortcuts">
+        <div className="space-y-1.5 text-[12px]">
+          <Row label="Send message" kbd="Enter" />
+          <Row label="New line" kbd="Shift+Enter" />
+          <Row label="Focus search" kbd="Ctrl+K" />
+          <Row label="Toggle sidebar" kbd="Ctrl+B" />
+          <Row label="Open settings" kbd="Ctrl+," />
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+function AppearanceTab({
+  settings,
+  setTheme,
+  updateSettings,
+}: {
+  settings: AppSettings;
+  setTheme: (t: ThemeMode) => void;
+  updateSettings: (s: Partial<AppSettings>) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <Section title="Theme">
+        <Segmented
+          value={settings.theme}
+          onChange={(v) => setTheme(v as ThemeMode)}
+          options={[
+            { value: 'light', label: 'Light', icon: Sun },
+            { value: 'dark', label: 'Dark', icon: Moon },
+            { value: 'system', label: 'System', icon: Monitor },
+          ]}
+        />
+        <p className="text-[11px] text-muted-foreground mt-1.5">
+          {settings.theme === 'system'
+            ? 'Following your OS preference.'
+            : `Always ${settings.theme === 'dark' ? 'dark' : 'light'}, regardless of OS.`}
+        </p>
+      </Section>
+
+      <Section title="Accent color">
+        <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+          {ACCENT_PRESETS.map((color) => (
+            <button
+              key={color}
+              onClick={() => updateSettings({ accentColor: color })}
+              className={cn(
+                'aspect-square rounded-lg border-2 transition-all',
+                settings.accentColor === color
+                  ? 'border-foreground scale-110'
+                  : 'border-transparent hover:scale-105'
+              )}
+              style={{ backgroundColor: color }}
+              aria-label={`Accent color ${color}`}
+            />
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Font size">
+        <Segmented
+          value={settings.fontSize}
+          onChange={(v) => updateSettings({ fontSize: v as any })}
+          options={[
+            { value: 'small', label: 'Small' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'large', label: 'Large' },
+            { value: 'xl', label: 'XL' },
+          ]}
+        />
+      </Section>
+
+      <Section title="Font family">
+        <Segmented
+          value={settings.fontFamily}
+          onChange={(v) => updateSettings({ fontFamily: v as any })}
+          options={[
+            { value: 'sans', label: 'Sans' },
+            { value: 'serif', label: 'Serif' },
+            { value: 'mono', label: 'Mono' },
+          ]}
+        />
+      </Section>
+
+      <Section title="Density">
+        <Segmented
+          value={settings.density}
+          onChange={(v) => updateSettings({ density: v as any })}
+          options={[
+            { value: 'compact', label: 'Compact' },
+            { value: 'comfortable', label: 'Cozy' },
+            { value: 'spacious', label: 'Roomy' },
+          ]}
+        />
+      </Section>
+
+      <Section title="Motion">
+        <Toggle
+          icon={Zap}
+          label="Animations"
+          desc="Enable transitions and motion"
+          enabled={settings.animationsEnabled}
+          onChange={(v) => updateSettings({ animationsEnabled: v })}
+        />
+      </Section>
+    </div>
+  );
+}
+
+function ChatTab({
+  settings,
+  updateSettings,
+  showCustomInstr,
+  setShowCustomInstr,
+}: {
+  settings: AppSettings;
+  updateSettings: (s: Partial<AppSettings>) => void;
+  showCustomInstr: boolean;
+  setShowCustomInstr: (v: boolean) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <Section title="Behavior">
+        <Toggle
+          icon={Keyboard}
+          label="Enter to send"
+          desc="Use Shift+Enter for new line"
+          enabled={settings.enterToSend}
+          onChange={(v) => updateSettings({ enterToSend: v })}
+        />
+        <Toggle
+          icon={Sparkles}
+          label="Stream responses"
+          desc="Show tokens as they arrive"
+          enabled={settings.streamResponses}
+          onChange={(v) => updateSettings({ streamResponses: v })}
+        />
+        <Toggle
+          icon={Eye}
+          label="Show token counts"
+          desc="Display token usage under messages"
+          enabled={settings.showTokenCounts}
+          onChange={(v) => updateSettings({ showTokenCounts: v })}
+        />
+        <Toggle
+          icon={Code}
+          label="Developer mode"
+          desc="Show API stats in console"
+          enabled={settings.developerMode}
+          onChange={(v) => updateSettings({ developerMode: v })}
+        />
+      </Section>
+
+      <Section title="Default model">
+        <select
+          value={settings.defaultModel ?? 'gemini-2.0-flash'}
+          onChange={(e) => updateSettings({ defaultModel: e.target.value })}
+          className="w-full px-3 py-2 rounded-lg border border-border bg-background text-[13px] focus:border-indigo-500 outline-none text-foreground"
+        >
+          <option value="gemini-2.0-flash">Gemini 2.0 Flash · fast</option>
+          <option value="gemini-1.5-pro">Gemini 1.5 Pro · balanced</option>
+          <option value="gemini-1.5-flash">Gemini 1.5 Flash · quick</option>
+        </select>
+      </Section>
+
+      <Section title="Custom instructions">
+        <p className="text-[11px] text-muted-foreground mb-2">
+          Tell the AI how to respond. These instructions apply to every conversation.
+        </p>
+        <button
+          onClick={() => setShowCustomInstr(!showCustomInstr)}
+          className="flex items-center gap-1.5 text-[12px] text-indigo-500 hover:underline"
+        >
+          {showCustomInstr ? <EyeOff size={12} /> : <Eye size={12} />}
+          {showCustomInstr ? 'Hide editor' : 'Show editor'}
+        </button>
+        {showCustomInstr && (
+          <textarea
+            value={settings.customInstructions ?? ''}
+            onChange={(e) => updateSettings({ customInstructions: e.target.value })}
+            placeholder="e.g. Always reply in concise bullet points. Prefer TypeScript over JavaScript."
+            rows={4}
+            className="w-full mt-2 px-3 py-2 rounded-lg border border-border bg-background text-[13px] resize-y outline-none focus:border-indigo-500 text-foreground"
+          />
+        )}
+      </Section>
+
+      <Section title="Language">
+        <select
+          value={settings.language ?? 'en'}
+          onChange={(e) => updateSettings({ language: e.target.value })}
+          className="w-full px-3 py-2 rounded-lg border border-border bg-background text-[13px] focus:border-indigo-500 outline-none text-foreground"
+        >
+          <option value="en">English</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+          <option value="it">Italiano</option>
+          <option value="pt">Português</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+          <option value="zh">中文</option>
+          <option value="tl">Tagalog</option>
+        </select>
+      </Section>
+    </div>
+  );
+}
+
+function AccountTab({ tier, tierLabel }: { tier: string; tierLabel: string }) {
+  return (
+    <div className="space-y-6">
+      <Section title="Account">
+        <p className="text-[13px] text-muted-foreground">
+          Manage your plan, billing, and connected accounts in the dashboard.
+        </p>
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-1.5 text-[12px] text-indigo-500 hover:underline mt-2"
+        >
+          <CreditCard size={12} /> Go to account dashboard
+        </Link>
+      </Section>
+      <Section title="Subscription">
+        <div className="rounded-xl border border-border p-4 bg-muted/30">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Current plan</p>
+              <p className="text-lg font-semibold mt-0.5">{tierLabel}</p>
+            </div>
+            <span className={cn(
+              'text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wider',
+              tier === 'pro' || tier === 'premium'
+                ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white'
+                : 'bg-muted text-muted-foreground'
+            )}>
+              Active
+            </span>
+          </div>
+          <p className="text-[12px] text-muted-foreground mb-3">
+            {tier === 'pro'
+              ? 'Unlimited prompts · 10GB storage · Priority support'
+              : tier === 'premium'
+              ? 'Everything in Pro plus advanced AI models and team workspace'
+              : '10 daily prompts · Local storage only'}
+          </p>
+          <Link
+            to="/upgrade"
+            className="block w-full text-center py-2 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-[13px] font-medium hover:opacity-90 transition-opacity"
+          >
+            {tier === 'free' || tier === 'registered' ? 'Upgrade to Pro' : 'Manage subscription'}
+          </Link>
+        </div>
+      </Section>
+      <Section title="Privacy">
+        <Toggle
+          icon={Eye}
+          label="Conversation history"
+          desc="Store conversations in cloud for sync"
+          enabled
+          onChange={() => {}}
+          disabled
+        />
+        <Toggle
+          icon={Sparkles}
+          label="Model improvement"
+          desc="Allow your chats to improve AI models"
+          enabled={false}
+          onChange={() => {}}
+          disabled
+        />
+        <Toggle
+          icon={Bell}
+          label="In-app notifications"
+          desc="Get notified for new messages and updates"
+          enabled
+          onChange={() => {}}
+          disabled
+        />
+      </Section>
+    </div>
+  );
+}
+
+function DataTab({
+  onExport,
+  onImport,
+  onResetSettings,
+  confirmReset,
+  setConfirmReset,
+  onResetEverything,
+}: {
+  onExport: () => void;
+  onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onResetSettings: () => void;
+  confirmReset: boolean;
+  setConfirmReset: (v: boolean) => void;
+  onResetEverything: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <DataRow icon={Download} label="Export data" desc="Download all conversations and settings" onClick={onExport} />
+      <DataRow icon={Upload} label="Import data" desc="Restore from a backup file" onClick={() => document.getElementById('import-file')?.click()} />
+      <input id="import-file" type="file" accept=".json" onChange={onImport} className="hidden" />
+      <DataRow icon={RotateCcw} label="Reset settings" desc="Restore defaults without losing chats" onClick={onResetSettings} />
+      <div className="border-t border-border pt-3 mt-3">
+        {!confirmReset ? (
+          <DataRow
+            icon={Trash2}
+            label="Reset everything"
+            desc="Permanently delete all conversations, settings, and account data"
+            onClick={() => setConfirmReset(true)}
+            danger
+          />
+        ) : (
+          <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+            <div className="flex items-start gap-2 mb-3">
+              <AlertTriangle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-[12px] text-red-500">This permanently deletes all data. There is no undo.</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={onResetEverything}
+                className="flex-1 py-2 rounded-lg text-[12px] font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
+              >
+                Yes, delete everything
+              </button>
+              <button
+                onClick={() => setConfirmReset(false)}
+                className="flex-1 py-2 rounded-lg text-[12px] font-medium border border-border hover:bg-muted transition-colors text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// shared atoms
+// ---------------------------------------------------------------------------
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+        {title}
+      </h3>
+      <div className="space-y-2.5">{children}</div>
+    </div>
+  );
+}
+
+interface SegmentedOption {
+  value: string;
+  label: string;
+  icon?: React.ComponentType<{ size?: number; className?: string }>;
+}
+
+function Segmented({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: SegmentedOption[];
+}) {
+  return (
+    <div
+      className="grid gap-1 p-1 rounded-full bg-muted border border-border"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
+      {options.map((opt) => {
+        const Icon = opt.icon;
+        const selected = opt.value === value;
+        return (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              'flex items-center justify-center gap-1.5 py-1.5 rounded-full text-[12px] font-medium transition-all',
+              selected
+                ? 'bg-indigo-500 text-white shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {Icon && <Icon size={12} />}
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Toggle({
+  icon: Icon,
+  label,
+  desc,
+  enabled,
+  onChange,
+  disabled,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  desc: string;
+  enabled: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-between gap-3 py-2 px-3 -mx-3 rounded-lg transition-colors',
+        !disabled && 'hover:bg-muted/40 cursor-pointer'
+      )}
+      onClick={() => !disabled && onChange(!enabled)}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div
+          className={cn(
+            'flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center border transition-colors',
+            enabled
+              ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-500'
+              : 'bg-muted border-border text-muted-foreground'
+          )}
+        >
+          <Icon size={13} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium leading-tight text-foreground">{label}</p>
+          <p className="text-[11px] text-muted-foreground truncate">{desc}</p>
         </div>
       </div>
-      <button onClick={() => onChange(!enabled)}
-        className={cn('relative w-9 h-5 rounded-full transition-colors', enabled ? 'bg-[var(--m-accent-blue)]' : 'bg-white/[0.08]')}>
-        <motion.div animate={{ x: enabled ? 16 : 2 }} transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          className="absolute top-[2px] w-4 h-4 rounded-full bg-white shadow-sm" />
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label={label}
+        disabled={disabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!disabled) onChange(!enabled);
+        }}
+        style={{
+          width: 48,
+          height: 26,
+          borderRadius: 9999,
+          background: enabled ? '#6366f1' : 'rgba(128,128,128,0.25)',
+          transition: 'background-color 0.2s ease',
+          opacity: disabled ? 0.5 : 1,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          padding: 0,
+          border: 'none',
+          position: 'relative',
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            top: 4,
+            left: 4,
+            width: 18,
+            height: 18,
+            borderRadius: 9999,
+            background: '#ffffff',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+            transform: enabled ? 'translateX(22px)' : 'translateX(0)',
+            transition: 'transform 0.2s ease',
+          }}
+        />
       </button>
     </div>
+  );
+}
+
+function Row({ label, kbd }: { label: string; kbd: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-muted-foreground">{label}</span>
+      <kbd className="px-1.5 py-0.5 rounded-md border border-border bg-muted font-mono text-[10px] text-foreground">
+        {kbd}
+      </kbd>
+    </div>
+  );
+}
+
+function DataRow({
+  icon: Icon,
+  label,
+  desc,
+  onClick,
+  danger,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  desc: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border hover:bg-muted/40 transition-colors text-left',
+        danger && 'border-red-500/30 hover:bg-red-500/10'
+      )}
+    >
+      <Icon size={14} className={danger ? 'text-red-500' : 'text-muted-foreground'} />
+      <div className="min-w-0 flex-1">
+        <p className={cn('text-[13px] font-medium', danger && 'text-red-500')}>{label}</p>
+        <p className="text-[11px] text-muted-foreground truncate">{desc}</p>
+      </div>
+    </button>
   );
 }

@@ -9,27 +9,40 @@ import { LimitModal } from '@/components/modals/LimitModal';
 import { ToastSystem } from '@/components/ui/ToastSystem';
 import { DeveloperPanel } from '@/components/ui/DeveloperPanel';
 import { Footer } from '@/components/ui/Footer';
+import { useSearchParams } from 'react-router';
 
 export function ChatWorkspace() {
-  const { sidebarOpen, createConversation, conversations } = useStore();
+  const { createConversation, conversations, bootstrap, toggleSettings } = useStore();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useTheme();
   useKeyboardShortcuts();
 
   useEffect(() => {
-    if (conversations.length === 0) {
-      createConversation();
+    void bootstrap();
+  }, [bootstrap]);
+
+  useEffect(() => {
+    if (searchParams.get('settings') === '1') {
+      toggleSettings();
+      const next = new URLSearchParams(searchParams);
+      next.delete('settings');
+      setSearchParams(next, { replace: true });
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (conversations.length === 0) {
+      void createConversation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden" style={{ backgroundColor: 'var(--m-bg-base)' }}>
+    <div className="h-screen w-screen flex overflow-hidden bg-background">
       <Sidebar />
-      <div
-        className={`flex flex-col flex-1 min-w-0 transition-all duration-300 ${
-          sidebarOpen ? 'lg:ml-0' : 'lg:-ml-[280px]'
-        }`}
-      >
+      <div className="flex flex-col flex-1 min-w-0 transition-all duration-300">
         <div className="flex-1 flex flex-col min-h-0">
           <ChatArea />
         </div>

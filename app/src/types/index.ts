@@ -41,7 +41,7 @@ export interface AIProvider {
   id: string;
   name: string;
   model: string;
-  sendMessage(messages: ChatMessage[]): Promise<ReadableStream<Uint8Array>>;
+  sendMessage(messages: ChatMessage[], attachments?: File[]): Promise<ReadableStream<Uint8Array>>;
   generateTitle?(messages: ChatMessage[]): Promise<string>;
 }
 
@@ -49,9 +49,17 @@ export interface AppSettings {
   theme: ThemeMode;
   language: string;
   animationsEnabled: boolean;
-  fontSize: 'small' | 'medium' | 'large';
+  fontSize: 'small' | 'medium' | 'large' | 'xl';
   developerMode: boolean;
   soundEnabled: boolean;
+  enterToSend: boolean;
+  streamResponses: boolean;
+  showTokenCounts: boolean;
+  density: 'compact' | 'comfortable' | 'spacious';
+  accentColor: string;
+  fontFamily: 'sans' | 'serif' | 'mono';
+  customInstructions: string;
+  defaultModel?: string;
 }
 
 export interface DeveloperStats {
@@ -73,15 +81,17 @@ export interface Toast {
 
 export interface UserProfile {
   id: string;
+  email: string | null;
   display_name: string | null;
+  username?: string | null;
   avatar_url: string | null;
+  bio?: string | null;
   role: string;
   subscription_tier: string;
   subscription_status: string | null;
-  prompt_count: number;
-  daily_prompt_count: number;
-  daily_prompt_reset: string | null;
-  storage_used: number;
+  onboarding_completed?: boolean;
+  last_seen_at?: string | null;
+  metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }

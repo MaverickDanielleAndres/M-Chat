@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Twitter, Github, Linkedin, Mail, MapPin, Globe } from 'lucide-react';
+import { Twitter, Github, Linkedin, Mail, Globe } from 'lucide-react';
 import { FooterBackgroundGradient, TextHoverEffect } from '@/components/ui/hover-footer';
 
 export function LandingFooter() {
@@ -33,12 +33,12 @@ export function LandingFooter() {
 
   const contactInfo = [
     {
-      icon: <Mail size={18} className="text-[var(--m-accent-blue)]" />,
+      icon: <Mail size={18} className="text-indigo-500" />,
       text: "hello@m-chat.ai",
       href: "mailto:hello@m-chat.ai",
     },
     {
-      icon: <Globe size={18} className="text-[var(--m-accent-blue)]" />,
+      icon: <Globe size={18} className="text-indigo-500" />,
       text: "San Francisco, CA",
     },
   ];
@@ -50,16 +50,16 @@ export function LandingFooter() {
   ];
 
   return (
-    <footer className="bg-[var(--m-bg-elevated)] relative h-fit rounded-t-3xl overflow-hidden mt-8 border-t border-white/[0.04]">
+    <footer className="bg-card relative h-fit rounded-t-3xl overflow-hidden mt-8 border-t border-border">
       <div className="max-w-7xl mx-auto p-14 pb-4 z-40 relative">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-12 md:gap-8 lg:gap-12 pb-12">
           {/* Brand section */}
           <div className="flex flex-col space-y-4 lg:col-span-2">
             <Link to="/" className="flex items-center space-x-2">
               <img src="/logonobg.png" alt="M-Chat Logo" className="w-8 h-8" />
-              <span className="text-[var(--m-text-primary)] text-2xl font-bold">M-Chat</span>
+              <span className="text-foreground text-2xl font-bold">M-Chat</span>
             </Link>
-            <p className="text-[13px] text-[var(--m-text-secondary)] leading-relaxed">
+            <p className="text-[13px] text-muted-foreground leading-relaxed">
               Think Faster. Create Smarter. Your AI workspace for everything.
             </p>
           </div>
@@ -67,7 +67,7 @@ export function LandingFooter() {
           {/* Footer link sections */}
           {footerLinks.map((section) => (
             <div key={section.title}>
-              <h4 className="text-[var(--m-text-primary)] text-sm font-semibold mb-6">
+              <h4 className="text-foreground text-sm font-semibold mb-6">
                 {section.title}
               </h4>
               <ul className="space-y-3">
@@ -75,12 +75,12 @@ export function LandingFooter() {
                   <li key={link.label} className="relative w-fit">
                     <a
                       href={link.href}
-                      className="text-[13px] text-[var(--m-text-secondary)] hover:text-[var(--m-accent-blue)] transition-colors"
+                      className="text-[13px] text-muted-foreground hover:text-indigo-500 transition-colors"
                     >
                       {link.label}
                     </a>
                     {link.pulse && (
-                      <span className="absolute top-0 -right-3 w-1.5 h-1.5 rounded-full bg-[var(--m-accent-blue)] animate-pulse"></span>
+                      <span className="absolute top-0 -right-3 w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
                     )}
                   </li>
                 ))}
@@ -90,22 +90,22 @@ export function LandingFooter() {
 
           {/* Contact section */}
           <div>
-            <h4 className="text-[var(--m-text-primary)] text-sm font-semibold mb-6">
+            <h4 className="text-foreground text-sm font-semibold mb-6">
               Contact Us
             </h4>
             <ul className="space-y-4">
               {contactInfo.map((item, i) => (
-                <li key={i} className="flex items-center space-x-3 text-[13px] text-[var(--m-text-secondary)]">
+                <li key={i} className="flex items-center space-x-3 text-[13px] text-muted-foreground">
                   {item.icon}
                   {item.href ? (
                     <a
                       href={item.href}
-                      className="hover:text-[var(--m-accent-blue)] transition-colors"
+                      className="hover:text-indigo-500 transition-colors"
                     >
                       {item.text}
                     </a>
                   ) : (
-                    <span className="hover:text-[var(--m-accent-blue)] transition-colors">
+                    <span className="hover:text-indigo-500 transition-colors">
                       {item.text}
                     </span>
                   )}
@@ -115,10 +115,10 @@ export function LandingFooter() {
           </div>
         </div>
 
-        <hr className="border-t border-white/[0.04] my-8" />
+        <hr className="border-t border-border my-8" />
 
         {/* Footer bottom */}
-        <div className="flex flex-col md:flex-row justify-between items-center text-[12px] space-y-4 md:space-y-0 text-[var(--m-text-muted)]">
+        <div className="flex flex-col md:flex-row justify-between items-center text-[12px] space-y-4 md:space-y-0 text-muted-foreground">
           {/* Social icons */}
           <div className="flex space-x-6">
             {socialLinks.map(({ icon, label, href }) => (
@@ -126,7 +126,7 @@ export function LandingFooter() {
                 key={label}
                 href={href}
                 aria-label={label}
-                className="hover:text-[var(--m-accent-blue)] transition-colors"
+                className="hover:text-indigo-500 transition-colors"
               >
                 {icon}
               </a>

@@ -22,20 +22,20 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.03 }}
-      className="border-b border-white/[0.04] last:border-0"
+      className="border-b border-border last:border-0"
     >
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between py-5 px-4 text-left group hover:bg-white/[0.02] transition-colors"
+        className="w-full flex items-center justify-between py-5 px-4 text-left group hover:bg-muted/40 transition-colors"
       >
-        <span className="text-[14px] font-medium text-[var(--m-text-primary)] pr-4">
+        <span className="text-[14px] font-medium text-foreground pr-4">
           {faq.q}
         </span>
         <ChevronDown
           size={15}
           strokeWidth={1.5}
           className={cn(
-            'flex-shrink-0 text-[var(--m-text-muted)] transition-transform duration-200',
+            'flex-shrink-0 text-muted-foreground transition-transform duration-200',
             open && 'rotate-180'
           )}
         />
@@ -49,7 +49,7 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <p className="text-[13px] text-[var(--m-text-secondary)] leading-relaxed px-4 pb-5">
+            <p className="text-[13px] text-muted-foreground leading-relaxed px-4 pb-5">
               {faq.a}
             </p>
           </motion.div>
@@ -64,9 +64,9 @@ export function FAQ() {
   const inView = useInView(ref, { once: true, margin: '-60px' });
 
   return (
-    <section className="py-16 md:py-24 bg-[var(--m-bg-elevated)] relative overflow-hidden">
+    <section className="py-16 md:py-24 bg-card relative overflow-hidden">
       {/* Subtle background glow */}
-      <div className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-[var(--m-accent-blue)]/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-3xl mx-auto px-6 relative z-10">
         <motion.div
@@ -76,10 +76,10 @@ export function FAQ() {
           transition={{ duration: 0.5 }}
           className="mb-10 text-center"
         >
-          <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-[var(--m-accent-blue)] mb-3">
+          <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-indigo-500 mb-3">
             FAQ
           </p>
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-[var(--m-text-primary)] tracking-tight">
+          <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground tracking-tight">
             Common questions
           </h2>
         </motion.div>
@@ -88,7 +88,7 @@ export function FAQ() {
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="rounded-2xl border border-white/[0.05] hover:border-[var(--m-accent-blue)]/40 bg-[var(--m-bg-card)]/40 shadow-2xl hover:shadow-[0_0_40px_-10px_rgba(99,102,241,0.25)] transition-all duration-500 overflow-hidden backdrop-blur-sm"
+          className="rounded-2xl border border-border hover:border-indigo-500/40 bg-card/40 shadow-2xl hover:shadow-[0_0_40px_-10px_rgba(99,102,241,0.25)] transition-all duration-500 overflow-hidden backdrop-blur-sm"
         >
           {faqs.map((faq, i) => (
             <FAQItem key={i} faq={faq} index={i} />

@@ -47,7 +47,7 @@ function FeatureCard({
       initial={{ opacity: 0, y: 28 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.55, delay: index * 0.07, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className={`bento-card group relative rounded-2xl border border-white/[0.05] bg-[var(--m-bg-card)]/60 p-6 ${
+      className={`bento-card group relative rounded-2xl border border-border bg-card/60 p-6 ${
         isFeatured ? 'md:col-span-2 md:p-8' : ''
       }`}
     >
@@ -75,14 +75,14 @@ function FeatureCard({
       )}
 
       <h3
-        className={`font-display font-semibold text-[var(--m-text-primary)] mb-2 ${
+        className={`font-display font-semibold text-foreground mb-2 ${
           isFeatured ? 'text-[20px]' : 'text-[15px]'
         }`}
       >
         {feature.title}
       </h3>
       <p
-        className={`text-[var(--m-text-secondary)] leading-relaxed ${
+        className={`text-muted-foreground leading-relaxed ${
           isFeatured ? 'text-[14px] max-w-md' : 'text-[13px]'
         }`}
       >
@@ -118,15 +118,15 @@ export function Features() {
           transition={{ duration: 0.5 }}
           className="mb-16"
         >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--m-accent-blue)] mb-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-500 mb-4">
             Capabilities
           </p>
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-            <h2 className="text-[clamp(1.9rem,3.8vw,2.8rem)] font-display font-bold text-[var(--m-text-primary)] leading-tight tracking-tight max-w-lg">
+            <h2 className="text-[clamp(1.9rem,3.8vw,2.8rem)] font-display font-bold text-foreground leading-tight tracking-tight max-w-lg">
               Everything you need,{' '}
               <span className="gradient-text">nothing you don't.</span>
             </h2>
-            <p className="text-[14px] text-[var(--m-text-secondary)] max-w-xs leading-relaxed md:text-right">
+            <p className="text-[14px] text-muted-foreground max-w-xs leading-relaxed md:text-right">
               A complete AI toolkit built for creators, developers, and professionals.
             </p>
           </div>

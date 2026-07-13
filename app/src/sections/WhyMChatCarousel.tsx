@@ -78,11 +78,11 @@ export function WhyMChatCarousel({
 
   return (
     <div className="w-full max-w-6xl mx-auto">
-      <div className="relative overflow-hidden rounded-2xl md:rounded-[2rem] flex flex-col-reverse lg:flex-row min-h-[420px] lg:min-h-[460px] border border-white/[0.05] bg-[#0c0c14]">
+      <div className="relative overflow-hidden rounded-2xl md:rounded-[2rem] flex flex-col-reverse lg:flex-row min-h-[420px] lg:min-h-[460px] border border-border bg-card">
         
         {/* Left column */}
         <div
-          className="w-full lg:w-[40%] relative flex items-center justify-center py-8 md:py-10 overflow-hidden bg-[#0a0a10]"
+          className="w-full lg:w-[40%] relative flex items-center justify-center py-8 md:py-10 overflow-hidden bg-card"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           onWheel={(e) => {
@@ -107,11 +107,11 @@ export function WhyMChatCarousel({
                   className={cn(
                     "shrink-0 snap-center flex items-center justify-center gap-2 px-5 py-3 rounded-full text-center border transition-colors duration-300",
                     isActive
-                      ? "bg-[var(--m-accent-blue)] text-white border-[var(--m-accent-blue)] shadow-[0_0_15px_rgba(99,102,241,0.3)]"
-                      : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10 hover:text-white"
+                      ? "bg-indigo-500 text-foreground border-[var(--m-accent-blue)] shadow-[0_0_15px_rgba(99,102,241,0.3)]"
+                      : "bg-white/5 text-foreground/70 border-white/10 hover:bg-white/10 hover:text-foreground"
                   )}
                 >
-                  <feature.icon size={16} strokeWidth={1.8} className={isActive ? "text-white" : "text-white/50"} />
+                  <feature.icon size={16} strokeWidth={1.8} className={isActive ? "text-foreground" : "text-foreground/50"} />
                   <span className="font-semibold text-xs tracking-tight uppercase whitespace-nowrap">
                     {feature.label}
                   </span>
@@ -153,11 +153,11 @@ export function WhyMChatCarousel({
                     className={cn(
                       "absolute inset-x-0 flex items-center justify-center gap-2 px-4 rounded-full text-center border transition-colors duration-300",
                       isActive
-                        ? "bg-[var(--m-accent-blue)] text-white border-[var(--m-accent-blue)] z-20 shadow-[0_0_15px_rgba(99,102,241,0.3)]"
-                        : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10 hover:text-white"
+                        ? "bg-indigo-500 text-foreground border-[var(--m-accent-blue)] z-20 shadow-[0_0_15px_rgba(99,102,241,0.3)]"
+                        : "bg-white/5 text-foreground/70 border-white/10 hover:bg-white/10 hover:text-foreground"
                     )}
                   >
-                    <feature.icon size={14} strokeWidth={1.8} className={isActive ? "text-white" : "text-white/50"} />
+                    <feature.icon size={14} strokeWidth={1.8} className={isActive ? "text-foreground" : "text-foreground/50"} />
                     <span className="font-semibold text-xs tracking-tight uppercase truncate">
                       {feature.label}
                     </span>
@@ -169,7 +169,7 @@ export function WhyMChatCarousel({
         </div>
 
         {/* Right column: Cards */}
-        <div className="flex-1 min-h-[320px] md:min-h-[400px] lg:min-h-[460px] relative flex items-center justify-center px-6 py-10 overflow-hidden border-b lg:border-b-0 lg:border-l border-white/[0.05]">
+        <div className="flex-1 min-h-[320px] md:min-h-[400px] lg:min-h-[460px] relative flex items-center justify-center px-6 py-10 overflow-hidden border-b lg:border-b-0 lg:border-l border-border">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.08)_0%,transparent_70%)]" />
           
           <div className="relative w-full max-w-[400px] aspect-[16/10] flex items-center justify-center">
@@ -190,13 +190,13 @@ export function WhyMChatCarousel({
                     zIndex: isActive ? 20 : isPrev || isNext ? 10 : 0,
                   }}
                   transition={{ type: "spring", stiffness: 220, damping: 32, mass: 0.85 }}
-                  className="absolute inset-0 rounded-2xl overflow-hidden border border-white/[0.1] bg-[#12121a] shadow-2xl flex flex-col p-8"
+                  className="absolute inset-0 rounded-2xl overflow-hidden border border-border bg-[#12121a] shadow-2xl flex flex-col p-8"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-[var(--m-accent-blue)]/10 flex items-center justify-center mb-6">
-                    <feature.icon size={24} className="text-[var(--m-accent-blue)]" />
+                  <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-6">
+                    <feature.icon size={24} className="text-indigo-500" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3">{feature.label}</h3>
-                  <p className="text-white/70 leading-relaxed text-sm">{feature.description}</p>
+                  <h3 className="text-xl font-bold text-foreground mb-3">{feature.label}</h3>
+                  <p className="text-foreground/70 leading-relaxed text-sm">{feature.description}</p>
                 </motion.div>
               );
             })}
@@ -208,7 +208,7 @@ export function WhyMChatCarousel({
               <div
                 key={f.id}
                 onClick={() => handleChipClick(i)}
-                className={cn("rounded-full cursor-pointer transition-all duration-300", i === currentIndex ? "w-4 bg-[var(--m-accent-blue)]" : "w-1.5 bg-white/20")}
+                className={cn("rounded-full cursor-pointer transition-all duration-300", i === currentIndex ? "w-4 bg-indigo-500" : "w-1.5 bg-white/20")}
                 style={{ height: '4px' }}
               />
             ))}

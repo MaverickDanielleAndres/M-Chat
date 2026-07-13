@@ -42,13 +42,13 @@ const reasons = [
 
 export function WhyMChat() {
   return (
-    <section className="py-16 md:py-24 bg-[var(--m-bg-elevated)] relative overflow-hidden">
+    <section className="py-16 md:py-24 bg-card relative overflow-hidden">
       <div className="max-w-6xl mx-auto px-6">
         <div className="mb-12 text-center">
-          <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-[var(--m-accent-blue)] mb-3">
+          <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-indigo-500 mb-3">
             Why M-Chat
           </p>
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-[var(--m-text-primary)] leading-[1.1] tracking-tight mb-5">
+          <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground leading-[1.1] tracking-tight mb-5">
             Built for the future
           </h2>
         </div>

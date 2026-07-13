@@ -1,32 +1,46 @@
 import { useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 
+/**
+ * Applies the user's UI preferences to the document:
+ *   - `.dark` / `.light` on `<html>` for theme switching
+ *   - data-font-size / data-font-family / data-density for CSS hooks
+ *   - --accent-color CSS var from settings.accentColor
+ */
 export function useTheme() {
   const { settings } = useStore();
-  const theme = settings.theme;
 
   useEffect(() => {
     const root = document.documentElement;
-    
-    const applyTheme = (isDark: boolean) => {
-      if (isDark) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
+    const applyTheme = (mode: 'light' | 'dark') => {
+      root.classList.toggle('dark', mode === 'dark');
+      root.classList.toggle('light', mode === 'light');
+      root.style.colorScheme = mode;
     };
 
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      applyTheme(mediaQuery.matches);
-      
-      const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
-      mediaQuery.addEventListener('change', handler);
-      return () => mediaQuery.removeEventListener('change', handler);
+    if (settings.theme === 'system') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      applyTheme(mq.matches ? 'dark' : 'light');
+      const handler = (e: MediaQueryListEvent) => applyTheme(e.matches ? 'dark' : 'light');
+      mq.addEventListener('change', handler);
+      return () => mq.removeEventListener('change', handler);
     } else {
-      applyTheme(theme === 'dark');
+      applyTheme(settings.theme);
     }
-  }, [theme]);
+  }, [settings.theme]);
 
-  return { theme };
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.fontSize = settings.fontSize;
+    root.dataset.fontFamily = settings.fontFamily;
+    root.dataset.density = settings.density;
+  }, [settings.fontSize, settings.fontFamily, settings.density]);
+
+  useEffect(() => {
+    if (settings.accentColor) {
+      document.documentElement.style.setProperty('--accent-color', settings.accentColor);
+    }
+  }, [settings.accentColor]);
+
+  return { theme: settings.theme, settings };
 }
