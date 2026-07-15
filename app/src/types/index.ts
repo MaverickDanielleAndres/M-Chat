@@ -29,9 +29,11 @@ export interface Conversation {
   updatedAt: number;
   pinned?: boolean;
   model?: string;
+  system_prompt?: string;
   userId?: string | null;
   synced?: boolean;
 }
+
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
-import { Shield, Users, MessageSquare, TrendingUp, Activity, Settings, BarChart3, ArrowLeft, Loader2, Crown, Zap, HardDrive, Eye } from 'lucide-react';
+import { Shield, Users, MessageSquare, TrendingUp, Activity, Settings, BarChart3, ArrowLeft, Loader2, Crown, Zap, HardDrive, Eye, ListTodo } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { UserManagementModal } from '@/components/admin/UserManagementModal';
 
-type Tab = 'overview' | 'users' | 'analytics' | 'settings';
+type Tab = 'overview' | 'users' | 'analytics' | 'subscriptions' | 'audit' | 'settings';
+
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -18,6 +19,12 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  
+  // New State
+  const [plans, setPlans] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [systemConfig, setSystemConfig] = useState<any[]>([]);
+
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -46,9 +53,32 @@ export function AdminDashboard() {
         setStats({ totalUsers: tu || 0, totalChats: tc || 0, totalMessages: tm || 0, proUsers: pu || 0, premiumUsers: pru || 0 });
       } catch { /* ignore */ }
     };
+
+    const fetchAdminData = async () => {
+      try {
+        const { data: p } = await supabase.from('subscription_plans').select('*').order('price_monthly', { ascending: true });
+        if (p) setPlans(p);
+        
+        const { data: a } = await supabase.from('audit_events').select('*').order('created_at', { ascending: false }).limit(50);
+        if (a) setAuditLogs(a);
+
+        const { data: s } = await supabase.from('system_config').select('*');
+        if (s) setSystemConfig(s);
+      } catch { /* ignore */ }
+    };
+
     fetchStats();
     fetchUsers();
+    fetchAdminData();
   }, [role, searchQuery]);
+
+  const updateConfig = async (key: string, newValue: any) => {
+    try {
+      await supabase.from('system_config').upsert({ key, value: newValue });
+      setSystemConfig(prev => prev.map(c => c.key === key ? { ...c, value: newValue } : c));
+    } catch { /* ignore */ }
+  };
+
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#050507]"><Loader2 size={20} className="animate-spin text-[var(--m-text-muted)]" /></div>;
   if (role !== 'admin') return null;
@@ -57,8 +87,11 @@ export function AdminDashboard() {
     { id: 'overview' as Tab, label: 'Overview', icon: BarChart3 },
     { id: 'users' as Tab, label: 'Users', icon: Users },
     { id: 'analytics' as Tab, label: 'Analytics', icon: Activity },
+    { id: 'subscriptions' as Tab, label: 'Subscriptions', icon: Crown },
+    { id: 'audit' as Tab, label: 'Audit Logs', icon: ListTodo },
     { id: 'settings' as Tab, label: 'Settings', icon: Settings },
   ];
+
 
   const statCards = [
     { label: 'Users', value: stats.totalUsers, icon: Users, color: 'var(--m-accent-blue)' },
@@ -206,18 +239,97 @@ export function AdminDashboard() {
               </motion.div>
             )}
 
+            {tab === 'subscriptions' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[15px] font-semibold text-[var(--m-text-primary)]">Subscription Plans</h3>
+                </div>
+                <div className="grid md:grid-cols-3 gap-4">
+                  {plans.map((p) => (
+                    <div key={p.id} className="p-5 rounded-2xl border border-white/[0.04] bg-[var(--m-bg-elevated)] space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[14px] font-medium text-[var(--m-text-primary)] capitalize">{p.name}</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--m-accent-blue-soft)] text-[var(--m-accent-blue)]">
+                          ${p.price_monthly}/mo
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[12px]">
+                          <span className="text-[var(--m-text-muted)]">Daily Prompts:</span>
+                          <span className="text-[var(--m-text-primary)]">{p.max_prompts_daily === -1 ? 'Unlimited' : p.max_prompts_daily}</span>
+                        </div>
+                        <div className="flex justify-between text-[12px]">
+                          <span className="text-[var(--m-text-muted)]">Image Gen:</span>
+                          <span className="text-[var(--m-text-primary)]">{p.includes_image_gen ? 'Yes' : 'No'}</span>
+                        </div>
+                      </div>
+                      <button className="w-full mt-2 py-1.5 rounded-lg border border-white/[0.04] text-[11px] text-[var(--m-text-muted)] hover:bg-white/[0.02] transition-colors">
+                        Edit Plan Limits
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {tab === 'audit' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                <div className="rounded-2xl border border-white/[0.04] bg-[var(--m-bg-elevated)] overflow-hidden">
+                  <table className="w-full text-[13px]">
+                    <thead>
+                      <tr className="bg-white/[0.02]">
+                        {['Date', 'Actor ID', 'Action', 'Entity', 'Details'].map((h) => (
+                          <th key={h} className="text-left px-4 py-3 text-[10px] font-medium uppercase tracking-wider text-[var(--m-text-muted)]">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditLogs.map((a) => (
+                        <tr key={a.id} className="border-t border-white/[0.03]">
+                          <td className="px-4 py-3 text-[11px] text-[var(--m-text-muted)]">{new Date(a.created_at).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-[11px] text-[var(--m-text-muted)] truncate max-w-[100px]">{a.actor_id || 'System'}</td>
+                          <td className="px-4 py-3 text-[12px] text-[var(--m-text-primary)]">{a.action}</td>
+                          <td className="px-4 py-3 text-[12px] text-[var(--m-text-muted)]">{a.entity}</td>
+                          <td className="px-4 py-3 text-[11px] text-[var(--m-text-muted)]">
+                            <pre className="max-w-[200px] overflow-hidden truncate">{JSON.stringify(a.payload)}</pre>
+                          </td>
+                        </tr>
+                      ))}
+                      {auditLogs.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--m-text-muted)]">No audit logs found</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+            )}
+
             {tab === 'settings' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                 <div className="p-5 rounded-2xl border border-white/[0.04] bg-[var(--m-bg-elevated)]">
-                  <h3 className="text-[15px] font-semibold text-[var(--m-text-primary)] mb-2">Feature Flags</h3>
-                  <p className="text-[13px] text-[var(--m-text-muted)] mb-4">Manage feature availability.</p>
-                  <div className="space-y-2">
-                    {['image_generation', 'voice_conversations', 'document_upload', 'advanced_models', 'api_access'].map((flag) => (
-                      <div key={flag} className="flex items-center justify-between py-2 border-b border-white/[0.03]">
-                        <span className="text-[13px] text-[var(--m-text-primary)] capitalize">{flag.replace(/_/g, ' ')}</span>
-                        <div className={cn('w-7 h-4 rounded-full relative cursor-pointer', flag === 'document_upload' ? 'bg-[var(--m-accent-blue)]' : 'bg-white/[0.08]')}>
-                          <div className={cn('absolute top-[2px] w-3 h-3 rounded-full bg-white shadow transition-transform', flag === 'document_upload' ? 'translate-x-[14px]' : 'translate-x-[2px]')} />
+                  <h3 className="text-[15px] font-semibold text-[var(--m-text-primary)] mb-2">Global Settings</h3>
+                  <p className="text-[13px] text-[var(--m-text-muted)] mb-4">Manage app-wide configurations.</p>
+                  <div className="space-y-4">
+                    {systemConfig.map((config) => (
+                      <div key={config.key} className="p-4 bg-black/20 rounded-xl border border-white/[0.02]">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <span className="text-[13px] font-medium text-[var(--m-text-primary)] capitalize">{config.key}</span>
+                            <p className="text-[11px] text-[var(--m-text-muted)]">{config.description}</p>
+                          </div>
+                          <div 
+                            onClick={() => updateConfig(config.key, { ...config.value, enabled: !config.value.enabled })}
+                            className={cn('w-8 h-4.5 rounded-full relative cursor-pointer', config.value.enabled ? 'bg-[var(--m-accent-blue)]' : 'bg-white/[0.08]')}
+                          >
+                            <div className={cn('absolute top-[2px] w-3.5 h-3.5 rounded-full bg-white shadow transition-transform', config.value.enabled ? 'translate-x-[16px]' : 'translate-x-[2px]')} />
+                          </div>
                         </div>
+                        {config.key === 'announcement' && (
+                          <input 
+                            type="text" 
+                            value={config.value.message}
+                            onChange={(e) => updateConfig(config.key, { ...config.value, message: e.target.value })}
+                            className="mt-2 w-full bg-black/40 border border-white/[0.04] rounded-lg px-3 py-1.5 text-[12px] text-[var(--m-text-primary)] outline-none focus:border-[var(--m-accent-blue)] transition-colors"
+                          />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -225,6 +337,7 @@ export function AdminDashboard() {
               </motion.div>
             )}
           </div>
+
         </div>
       </div>
       {selectedUser && (

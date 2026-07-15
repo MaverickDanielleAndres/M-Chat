@@ -17,6 +17,9 @@ import { ChatBubble } from './ChatMessage';
 import { EmptyState } from './EmptyState';
 import { ChatInput } from './ChatInput';
 import { NotificationsPanel } from '@/components/ui/NotificationsPanel';
+import { PersonaSelector } from './PersonaSelector';
+import { Download } from 'lucide-react';
+
 
 export function ChatArea() {
   const {
@@ -69,7 +72,26 @@ export function ChatArea() {
     }
   };
 
+  const handleExportMarkdown = () => {
+    if (!conversation || messages.length === 0) return;
+    let md = `# ${conversation.title || 'Conversation'}\n\n`;
+    for (const m of messages) {
+      md += `**${m.role === 'user' ? 'User' : 'M-Chat'}**:\n${m.content}\n\n---\n\n`;
+    }
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(conversation.title || 'conversation').replace(/\s+/g, '-').toLowerCase()}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    addToast({ type: 'success', message: 'Conversation exported to Markdown' });
+  };
+
   const unlimited = wallet.daily_quota === -1;
+
 
   return (
     <div className="flex flex-col h-full relative bg-background">
@@ -86,8 +108,18 @@ export function ChatArea() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <PersonaSelector />
           <NotificationsPanel />
+          <button
+            onClick={handleExportMarkdown}
+            disabled={!conversation || messages.length === 0}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
+            aria-label="Export conversation"
+            title="Export to Markdown"
+          >
+            <Download size={15} />
+          </button>
           <button
             onClick={handleShareConversation}
             disabled={!conversation}
@@ -97,6 +129,7 @@ export function ChatArea() {
           >
             <Share2 size={15} />
           </button>
+
           <div
             className={cn(
               'flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium ml-1',
