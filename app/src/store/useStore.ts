@@ -108,9 +108,11 @@ interface StoreState {
   // Boot / sync
   isSyncing: boolean;
   hasBootstrapped: boolean;
+  realtimeChannel: any | null;
 
   // Actions
   bootstrap: () => Promise<void>;
+
 
   createConversation: () => Promise<string>;
   setActiveConversation: (id: string) => void;
@@ -180,6 +182,7 @@ export const useStore = create<StoreState>()(
       toasts: [],
       isSyncing: false,
       hasBootstrapped: false,
+      realtimeChannel: null,
 
       // -------- bootstrap --------
       bootstrap: async () => {
@@ -203,12 +206,61 @@ export const useStore = create<StoreState>()(
       },
 
       setUser: async (userId, profile) => {
-        set({ userId, isAuthed: Boolean(userId), profile });
-        if (!userId) return;
+        const prevUserId = get().userId;
+        if (userId === prevUserId) return;
+
+        // Cleanup old realtime channel
+        const currentChannel = get().realtimeChannel;
+        if (currentChannel) {
+          supabase.removeChannel(currentChannel);
+        }
+
+        set({ userId, profile, isAuthed: !!userId, realtimeChannel: null });
+
+        if (userId) {
+          get().refreshWallet();
+          
+          // Set up realtime subscription for credit_wallets
+          if (isSupabaseConfigured) {
+            const channel = supabase
+              .channel(`public:credit_wallets:user_id=eq.${userId}`)
+              .on(
+                'postgres_changes',
+                {
+                  event: 'UPDATE',
+                  schema: 'public',
+                  table: 'credit_wallets',
+                  filter: `user_id=eq.${userId}`,
+                },
+                (payload: any) => {
+                  const newData = payload.new as any;
+                  if (newData) {
+                    set(() => ({
+                      wallet: {
+                        balance: newData.balance,
+                        daily_quota: newData.daily_quota,
+                        daily_used: newData.daily_used,
+                        daily_reset_at: newData.daily_reset_at,
+                      },
+                    }));
+                    
+                    // Show a toast if balance increased (e.g. granted credits)
+                    const oldWallet = get().wallet;
+                    if (newData.balance > oldWallet.balance) {
+                      get().addToast({ type: 'success', message: `You received ${newData.balance - oldWallet.balance} credits!` });
+                    }
+                  }
+                }
+              )
+              .subscribe();
+            
+            set({ realtimeChannel: channel });
+          }
+        }
+        
         try {
-          await ensureWallet(userId);
-          await get().refreshWallet();
-          const remoteSettings = (await fetchSettings(userId)) as SettingsRow | null;
+          await ensureWallet(userId ?? '');
+          const remoteSettings = (await fetchSettings(userId ?? '')) as SettingsRow | null;
           if (remoteSettings) {
             const merged = mergeRemoteSettings(remoteSettings, get().settings);
             set({ settings: merged });
@@ -962,6 +1014,9 @@ export const useStore = create<StoreState>()(
         userId: state.userId,
         isAuthed: state.isAuthed,
         wallet: state.wallet,
+        isSyncing: false,
+        hasBootstrapped: false,
+        realtimeChannel: null,
       }),
     }
   )

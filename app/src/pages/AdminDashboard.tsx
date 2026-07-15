@@ -43,6 +43,8 @@ export function AdminDashboard() {
 
   useEffect(() => {
     if (role !== 'admin') return;
+    let mounted = true;
+    
     const fetchStats = async () => {
       try {
         const { count: tu } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true });
@@ -50,26 +52,51 @@ export function AdminDashboard() {
         const { count: pru } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('subscription_tier', 'premium');
         const { count: tc } = await supabase.from('conversations').select('*', { count: 'exact', head: true });
         const { count: tm } = await supabase.from('messages').select('*', { count: 'exact', head: true });
-        setStats({ totalUsers: tu || 0, totalChats: tc || 0, totalMessages: tm || 0, proUsers: pu || 0, premiumUsers: pru || 0 });
+        if (mounted) setStats({ totalUsers: tu || 0, totalChats: tc || 0, totalMessages: tm || 0, proUsers: pu || 0, premiumUsers: pru || 0 });
       } catch { /* ignore */ }
     };
 
     const fetchAdminData = async () => {
       try {
         const { data: p } = await supabase.from('subscription_plans').select('*').order('price_monthly', { ascending: true });
-        if (p) setPlans(p);
+        if (p && mounted) setPlans(p);
         
         const { data: a } = await supabase.from('audit_events').select('*').order('created_at', { ascending: false }).limit(50);
-        if (a) setAuditLogs(a);
+        if (a && mounted) setAuditLogs(a);
 
         const { data: s } = await supabase.from('system_config').select('*');
-        if (s) setSystemConfig(s);
+        if (s && mounted) setSystemConfig(s);
       } catch { /* ignore */ }
     };
 
     fetchStats();
     fetchUsers();
     fetchAdminData();
+    
+    // Set up real-time subscriptions for Admin Dashboard
+    const adminChannel = supabase.channel('admin_dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_events' }, (payload: any) => {
+        if (mounted) {
+          if (payload.eventType === 'INSERT') {
+            setAuditLogs(prev => [payload.new, ...prev].slice(0, 50));
+          }
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => {
+        if (mounted) {
+          fetchStats();
+          fetchUsers();
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
+        if (mounted) fetchStats();
+      })
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(adminChannel);
+    };
   }, [role, searchQuery]);
 
   const updateConfig = async (key: string, newValue: any) => {
