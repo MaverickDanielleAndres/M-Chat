@@ -59,9 +59,9 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 function AuthSeparator() {
   return (
     <div className="flex w-full items-center justify-center">
-      <div className="h-px w-full bg-white/[0.08]" />
+      <div className="h-px w-full bg-border" />
       <span className="px-3 text-xs text-[var(--m-text-muted)] whitespace-nowrap">OR</span>
-      <div className="h-px w-full bg-white/[0.08]" />
+      <div className="h-px w-full bg-border" />
     </div>
   );
 }
@@ -201,7 +201,7 @@ export function LoginPage() {
                 type="button"
                 onClick={handleGoogle}
                 disabled={googleLoading}
-                className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-[13px] font-medium border border-white/[0.08] text-[var(--m-text-primary)] hover:bg-white/[0.04] hover:border-white/[0.12] transition-all disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-[13px] font-medium border border-border text-[var(--m-text-primary)] hover:bg-muted hover:border-foreground/20 transition-all disabled:opacity-50"
               >
                 {googleLoading
                   ? <Loader2 size={15} className="animate-spin" />
@@ -228,7 +228,7 @@ export function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your.email@example.com"
                 required
-                className="w-full pl-10 pr-4 py-3 rounded-xl text-[13px] border border-white/[0.07] bg-white/[0.03] text-[var(--m-text-primary)] placeholder:text-[var(--m-text-muted)] outline-none focus:border-[var(--m-accent-blue)]/40 focus:bg-white/[0.04] transition-all"
+                className="w-full pl-10 pr-4 py-3 rounded-xl text-[13px] border border-border bg-transparent text-[var(--m-text-primary)] placeholder:text-[var(--m-text-muted)] outline-none focus:border-[var(--m-accent-blue)]/40 focus:bg-background transition-all"
               />
               <AtSign size={15} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--m-text-muted)]" />
             </div>
@@ -242,7 +242,7 @@ export function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Your password"
                   required
-                  className="w-full pl-10 pr-10 py-3 rounded-xl text-[13px] border border-white/[0.07] bg-white/[0.03] text-[var(--m-text-primary)] placeholder:text-[var(--m-text-muted)] outline-none focus:border-[var(--m-accent-blue)]/40 focus:bg-white/[0.04] transition-all"
+                  className="w-full pl-10 pr-10 py-3 rounded-xl text-[13px] border border-border bg-transparent text-[var(--m-text-primary)] placeholder:text-[var(--m-text-muted)] outline-none focus:border-[var(--m-accent-blue)]/40 focus:bg-background transition-all"
                 />
                 <Lock size={15} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--m-text-muted)]" />
                 <button
