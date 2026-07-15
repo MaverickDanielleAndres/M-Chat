@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   ThumbsUp,
@@ -11,11 +11,14 @@ import {
   FileText,
   Image as ImageIcon,
   FileCode,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import type { ChatMessage, FileAttachment } from '@/types';
 import { cn, copyToClipboard, formatDate, formatFileSize } from '@/lib/utils';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useStore } from '@/store/useStore';
+import { tts, TextToSpeech } from '@/services/voice';
 
 interface Props {
   message: ChatMessage;
@@ -26,9 +29,11 @@ interface Props {
 export const ChatBubble = memo(function ChatBubble({ message, conversationId, isLast }: Props) {
   const { likeMessage, deleteMessage } = useStore();
   const [copied, setCopied] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const isUser = message.role === 'user';
   const isStreaming = message.status === 'streaming';
   const isError = message.status === 'error';
+  const ttsSupported = TextToSpeech.isSupported();
 
   const handleCopy = async () => {
     if (await copyToClipboard(message.content)) {
@@ -36,6 +41,19 @@ export const ChatBubble = memo(function ChatBubble({ message, conversationId, is
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  const handleSpeak = useCallback(() => {
+    if (isSpeaking) {
+      tts.stop();
+      setIsSpeaking(false);
+    } else {
+      tts.speak(message.content, {
+        onStart: () => setIsSpeaking(true),
+        onEnd: () => setIsSpeaking(false),
+        onError: () => setIsSpeaking(false),
+      });
+    }
+  }, [isSpeaking, message.content]);
 
   return (
     <motion.div
@@ -108,6 +126,16 @@ export const ChatBubble = memo(function ChatBubble({ message, conversationId, is
               <ActionBtn onClick={handleCopy} label="Copy">
                 {copied ? <Check size={12} strokeWidth={1.5} /> : <Copy size={12} strokeWidth={1.5} />}
               </ActionBtn>
+              {ttsSupported && (
+                <ActionBtn
+                  onClick={handleSpeak}
+                  label={isSpeaking ? 'Stop speaking' : 'Read aloud'}
+                  active={isSpeaking}
+                  activeClass="text-indigo-400"
+                >
+                  {isSpeaking ? <VolumeX size={12} strokeWidth={1.5} /> : <Volume2 size={12} strokeWidth={1.5} />}
+                </ActionBtn>
+              )}
               <ActionBtn
                 onClick={() => likeMessage(conversationId, message.id, true)}
                 label="Like"

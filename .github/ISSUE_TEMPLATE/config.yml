@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 M-Chat App
+    url: https://maverickdanielleandres.github.io/M-Chat
+    about: Open M-Chat and start chatting with AI
+  - name: 📖 Documentation
+    url: https://github.com/MaverickDanielleAndres/M-Chat/tree/main/app
+    about: Read the M-Chat documentation

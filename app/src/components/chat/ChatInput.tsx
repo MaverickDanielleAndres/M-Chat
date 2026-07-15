@@ -1,25 +1,45 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Paperclip, Mic, Send, Square, X, FileText, Image as ImageIcon } from 'lucide-react';
+import {
+  Paperclip,
+  Mic,
+  MicOff,
+  Send,
+  Square,
+  X,
+  FileText,
+  Image as ImageIcon,
+  Sparkles,
+  Globe,
+  Loader2,
+} from 'lucide-react';
 import { cn, formatFileSize } from '@/lib/utils';
 import { useStore } from '@/store/useStore';
+import { stt, SpeechToText } from '@/services/voice';
+import { detectImageGenerationIntent, generateImage } from '@/services/imageGen';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB default
 
 export function ChatInput() {
-  const { sendMessage, isGenerating, stopGeneration, wallet, settings } = useStore();
+  const { sendMessage, isGenerating, stopGeneration, wallet, settings, addToast } = useStore();
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
+  const sttSupported = SpeechToText.isSupported();
   const dailyQuota = wallet.daily_quota;
   const unlimited = dailyQuota === -1;
   const atLimit = !unlimited && wallet.daily_used >= dailyQuota;
 
+  // Auto-resize textarea
   useEffect(() => {
     const t = textareaRef.current;
     if (!t) return;
@@ -27,15 +47,82 @@ export function ChatInput() {
     t.style.height = `${Math.min(t.scrollHeight, 220)}px`;
   }, [input]);
 
+  // Voice input
+  const toggleVoice = useCallback(() => {
+    if (!sttSupported) {
+      addToast({ type: 'warning', message: 'Voice input not supported in this browser.' });
+      return;
+    }
+    if (isListening) {
+      stt.stop();
+      setIsListening(false);
+      setInterimTranscript('');
+    } else {
+      stt.start({
+        language: settings.language === 'en' ? 'en-US' : settings.language,
+        continuous: true,
+        onResult: (transcript, isFinal) => {
+          if (isFinal) {
+            setInput((prev) => prev + (prev.trim() ? ' ' : '') + transcript);
+            setInterimTranscript('');
+          } else {
+            setInterimTranscript(transcript);
+          }
+        },
+        onError: (err) => {
+          addToast({ type: 'error', message: `Voice error: ${err}` });
+          setIsListening(false);
+          setInterimTranscript('');
+        },
+        onEnd: () => {
+          setIsListening(false);
+          setInterimTranscript('');
+        },
+      });
+      setIsListening(true);
+    }
+  }, [isListening, sttSupported, settings.language, addToast]);
+
   const handleSend = useCallback(async () => {
     if (!input.trim() || isGenerating || atLimit) return;
     const content = input.trim();
+
+    // Stop voice if active
+    if (isListening) {
+      stt.stop();
+      setIsListening(false);
+    }
+
+    // Image generation intent detection
+    if (detectImageGenerationIntent(content)) {
+      setInput('');
+      setIsGeneratingImage(true);
+      try {
+        const results = await generateImage(content, { numberOfImages: 1 });
+        setGeneratedImages(results.map((r) => r.imageUrl));
+        // Also send as normal message so it appears in chat
+        await sendMessage(content, attachments.length > 0 ? attachments : undefined);
+        setAttachments([]);
+        addToast({ type: 'success', message: 'Image generated!' });
+      } catch (err) {
+        // Fall back to normal message if image gen fails
+        await sendMessage(content, attachments.length > 0 ? attachments : undefined);
+        setAttachments([]);
+        addToast({ type: 'info', message: 'Image generation unavailable — responded as text.' });
+      } finally {
+        setIsGeneratingImage(false);
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      }
+      return;
+    }
+
     const files = attachments;
     setInput('');
     setAttachments([]);
+    setGeneratedImages([]);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     await sendMessage(content, files.length > 0 ? files : undefined);
-  }, [input, isGenerating, atLimit, attachments, sendMessage]);
+  }, [input, isGenerating, atLimit, attachments, sendMessage, isListening, addToast]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -49,7 +136,7 @@ export function ChatInput() {
     if (!files) return;
     const valid = Array.from(files).filter((f) => {
       if (f.size > MAX_FILE_BYTES) {
-        console.warn('[M-Chat] skipping oversized file', f.name);
+        addToast({ type: 'warning', message: `${f.name} is too large (max 10MB)` });
         return false;
       }
       return true;
@@ -57,17 +144,12 @@ export function ChatInput() {
     if (valid.length) setAttachments((p) => [...p, ...valid].slice(0, 8));
   };
 
-  // drag/drop
+  // Drag & drop
   useEffect(() => {
     const zone = dropZoneRef.current;
     if (!zone) return;
-    const onDragOver = (e: DragEvent) => {
-      e.preventDefault();
-      setDragActive(true);
-    };
-    const onDragLeave = (e: DragEvent) => {
-      if (e.target === zone) setDragActive(false);
-    };
+    const onDragOver = (e: DragEvent) => { e.preventDefault(); setDragActive(true); };
+    const onDragLeave = (e: DragEvent) => { if (e.target === zone) setDragActive(false); };
     const onDrop = (e: DragEvent) => {
       e.preventDefault();
       setDragActive(false);
@@ -84,8 +166,39 @@ export function ChatInput() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const displayValue = input + (interimTranscript ? ` ${interimTranscript}` : '');
+
   return (
     <div ref={dropZoneRef} className="w-full max-w-3xl mx-auto px-3 sm:px-4 pb-3 pt-2 safe-area-bottom">
+      {/* Generated Images Preview */}
+      <AnimatePresence>
+        {generatedImages.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="flex flex-wrap gap-2 mb-2"
+          >
+            {generatedImages.map((imgUrl, i) => (
+              <div key={i} className="relative group">
+                <img
+                  src={imgUrl}
+                  alt={`Generated ${i + 1}`}
+                  className="h-32 w-32 object-cover rounded-xl border border-border/60"
+                />
+                <button
+                  onClick={() => setGeneratedImages((p) => p.filter((_, idx) => idx !== i))}
+                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full p-0.5"
+                >
+                  <X size={10} className="text-white" />
+                </button>
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Attachments */}
       <AnimatePresence>
         {attachments.length > 0 && (
           <motion.div
@@ -129,20 +242,37 @@ export function ChatInput() {
         )}
       </AnimatePresence>
 
+      {/* Voice indicator */}
+      <AnimatePresence>
+        {isListening && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400"
+          >
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span>Listening{interimTranscript ? `… "${interimTranscript}"` : '…'}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div
         className={cn(
           'relative flex items-end gap-1.5 rounded-2xl border bg-card/80 backdrop-blur-sm p-2 transition-all',
           isFocused
             ? 'border-indigo-500/40 shadow-md shadow-indigo-500/10'
             : 'border-border/60',
-          dragActive && 'ring-2 ring-indigo-500/40 border-indigo-500/60'
+          dragActive && 'ring-2 ring-indigo-500/40 border-indigo-500/60',
+          isListening && 'border-red-500/30 shadow-red-500/10'
         )}
       >
+        {/* Attach */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          disabled={isGenerating || atLimit}
+          disabled={isGenerating || atLimit || isGeneratingImage}
           className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 flex-shrink-0"
-          title="Attach file"
+          title="Attach file (image, PDF, code, etc.)"
         >
           <Paperclip size={17} strokeWidth={1.5} />
         </button>
@@ -150,6 +280,7 @@ export function ChatInput() {
           ref={fileInputRef}
           type="file"
           multiple
+          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.md,.json,.xml,.html,.css,.js,.ts,.tsx,.jsx,.py,.java,.cpp,.c,.sql"
           onChange={(e) => {
             handleFiles(e.target.files);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -157,11 +288,12 @@ export function ChatInput() {
           className="hidden"
         />
 
+        {/* Textarea */}
         <textarea
           ref={textareaRef}
-          value={input}
+          value={displayValue}
           onChange={(e) => {
-            if (e.target.value.length <= 8000) setInput(e.target.value);
+            if (!isListening && e.target.value.length <= 8000) setInput(e.target.value);
           }}
           onKeyDown={handleKeyDown}
           onFocus={() => setIsFocused(true)}
@@ -169,11 +301,15 @@ export function ChatInput() {
           placeholder={
             atLimit
               ? 'Daily limit reached — upgrade to keep chatting'
+              : isListening
+              ? 'Speak now…'
               : dragActive
               ? 'Drop files to attach…'
-              : 'Message M-Chat… (Shift+Enter for newline)'
+              : isGeneratingImage
+              ? 'Generating image…'
+              : 'Message M-Chat… (Shift+Enter for newline, try "generate an image of…")'
           }
-          disabled={isGenerating || atLimit}
+          disabled={isGenerating || atLimit || isListening || isGeneratingImage}
           rows={1}
           className={cn(
             'flex-1 resize-none bg-transparent outline-none text-[13px] sm:text-sm py-2.5 text-foreground',
@@ -181,19 +317,41 @@ export function ChatInput() {
           )}
         />
 
+        {/* Web search indicator */}
         <button
-          onClick={() => {
-            // voice input stub — feature flag controlled
-            const voice = useStore.getState().settings;
-            void voice;
-          }}
-          disabled={isGenerating || atLimit}
-          className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 flex-shrink-0 hidden sm:inline-flex"
-          title="Voice input (coming soon)"
+          type="button"
+          disabled
+          className="p-2 rounded-xl text-muted-foreground/40 flex-shrink-0 hidden sm:inline-flex cursor-default"
+          title="Web search is built-in via Gemini grounding"
         >
-          <Mic size={17} strokeWidth={1.5} />
+          <Globe size={15} strokeWidth={1.5} />
         </button>
 
+        {/* Voice */}
+        {sttSupported && (
+          <button
+            onClick={toggleVoice}
+            disabled={isGenerating || atLimit || isGeneratingImage}
+            className={cn(
+              'p-2 rounded-xl transition-colors flex-shrink-0 hidden sm:inline-flex',
+              isListening
+                ? 'text-red-400 bg-red-500/15 hover:bg-red-500/25 animate-pulse'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30'
+            )}
+            title={isListening ? 'Stop listening' : 'Voice input'}
+          >
+            {isListening ? <MicOff size={17} strokeWidth={1.5} /> : <Mic size={17} strokeWidth={1.5} />}
+          </button>
+        )}
+
+        {/* Image generation loading */}
+        {isGeneratingImage && (
+          <div className="p-2.5 rounded-xl flex-shrink-0">
+            <Loader2 size={15} className="text-indigo-400 animate-spin" strokeWidth={1.5} />
+          </div>
+        )}
+
+        {/* Stop / Send */}
         {isGenerating ? (
           <button
             onClick={stopGeneration}
@@ -203,33 +361,50 @@ export function ChatInput() {
             <Square size={15} strokeWidth={1.5} />
           </button>
         ) : (
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || atLimit}
-            className={cn(
-              'p-2.5 rounded-xl flex-shrink-0 transition-all',
-              input.trim() && !atLimit
-                ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90 shadow-sm shadow-indigo-500/20'
-                : 'text-muted-foreground disabled:opacity-30'
-            )}
-            title="Send message"
-          >
-            <Send size={15} strokeWidth={1.5} />
-          </button>
+          !isGeneratingImage && (
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || atLimit}
+              className={cn(
+                'p-2.5 rounded-xl flex-shrink-0 transition-all',
+                input.trim() && !atLimit
+                  ? detectImageGenerationIntent(input)
+                    ? 'bg-gradient-to-br from-violet-500 to-pink-600 text-white hover:opacity-90 shadow-sm shadow-violet-500/20'
+                    : 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90 shadow-sm shadow-indigo-500/20'
+                  : 'text-muted-foreground disabled:opacity-30'
+              )}
+              title={detectImageGenerationIntent(input) ? 'Generate image' : 'Send message'}
+            >
+              {detectImageGenerationIntent(input) ? (
+                <Sparkles size={15} strokeWidth={1.5} />
+              ) : (
+                <Send size={15} strokeWidth={1.5} />
+              )}
+            </button>
+          )
         )}
       </div>
+
       <div className="flex justify-center items-center gap-3 mt-1.5">
         <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
           <ImageIcon className="w-2.5 h-2.5" />
-          Files up to {Math.round(MAX_FILE_BYTES / (1024 * 1024))}MB
+          Images, docs, code up to {Math.round(MAX_FILE_BYTES / (1024 * 1024))}MB
         </span>
         <span className="text-[10px] text-muted-foreground">·</span>
-        <span className="text-[10px] text-muted-foreground">Gemini AI</span>
+        <span className="text-[10px] text-muted-foreground">Gemini 2.5 Flash</span>
         {settings.showTokenCounts && (
           <>
             <span className="text-[10px] text-muted-foreground">·</span>
             <span className="text-[10px] text-muted-foreground font-mono">
               {Math.ceil(input.length / 4)} tokens
+            </span>
+          </>
+        )}
+        {!unlimited && wallet.daily_quota > 0 && (
+          <>
+            <span className="text-[10px] text-muted-foreground">·</span>
+            <span className={cn('text-[10px] font-mono', atLimit ? 'text-red-400' : 'text-muted-foreground')}>
+              {wallet.daily_used}/{wallet.daily_quota} today
             </span>
           </>
         )}

@@ -26,8 +26,8 @@ export function AdminDashboard() {
         const { count: tu } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true });
         const { count: pu } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('subscription_tier', 'pro');
         const { count: pru } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('subscription_tier', 'premium');
-        const { count: tc } = await supabase.from('chats').select('*', { count: 'exact', head: true });
-        const { count: tm } = await supabase.from('chat_messages').select('*', { count: 'exact', head: true });
+        const { count: tc } = await supabase.from('conversations').select('*', { count: 'exact', head: true });
+        const { count: tm } = await supabase.from('messages').select('*', { count: 'exact', head: true });
         const { data: ud } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false }).limit(50);
         setStats({ totalUsers: tu || 0, totalChats: tc || 0, totalMessages: tm || 0, proUsers: pu || 0, premiumUsers: pru || 0 });
         if (ud) setUsers(ud);

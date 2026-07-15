@@ -646,7 +646,8 @@ export const useStore = create<StoreState>()(
 
         try {
           const { stream, usedFallback, fallbackReason: reason } =
-            await sendMessageWithFallback(messagesForAPI, attachments ?? [], content);
+            await sendMessageWithFallback(messagesForAPI, attachments ?? [], content, get().settings.customInstructions);
+
           fallbackReason = reason;
 
           // Show a non-blocking info toast if we used the fallback so the
