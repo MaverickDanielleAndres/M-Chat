@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -60,11 +61,28 @@ const QUICK_ACTIONS = [
 ] as const;
 
 export default function RuixenMoonChat() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [message, setMessage] = useState('');
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 48,
     maxHeight: 150,
   });
+
+  // Read prompt from URL
+  useEffect(() => {
+    const prompt = searchParams.get('prompt');
+    if (prompt) {
+      setMessage(prompt);
+      const next = new URLSearchParams(searchParams);
+      next.delete('prompt');
+      setSearchParams(next, { replace: true });
+      
+      setTimeout(() => {
+        adjustHeight();
+        textareaRef.current?.focus();
+      }, 100);
+    }
+  }, [searchParams, setSearchParams, adjustHeight]);
 
   const sendMessage = useStore((s) => s.sendMessage);
   const isGenerating = useStore((s) => s.isGenerating);

@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
+import { Link } from 'react-router';
 import { motion } from 'framer-motion';
 import {
   Type, Image, Video, AudioLines, FileText, FileSpreadsheet,
@@ -60,27 +61,29 @@ export function AICapabilities() {
     const Icon = capabilityIcons[cap] || Sparkles;
     
     return (
-      <PixelCard 
-        variant="blue" 
-        gap={5}
-        speed={40}
-        colors="#4f46e5,#6366f1,#818cf8,#e0e7ff"
-        className={cn(
-          "relative flex flex-col items-start p-5 bg-card/50 hover:border-[#6366f1]/50 transition-all duration-300 group overflow-hidden h-[120px] w-[200px]",
-          className
-        )}
+      <Link 
+        to={`/chat?prompt=${encodeURIComponent(`I want to explore the ${cap} capability`)}`} 
+        className={cn("block focus:outline-none h-[120px] w-[200px]", className)}
       >
-        <div className="relative z-10 w-full h-full flex flex-col items-start">
-          <Icon size={22} strokeWidth={1.5} className="text-muted-foreground group-hover:text-[#818cf8] transition-colors mb-auto" />
-          
-          <div className="mt-auto w-full pt-3 text-left">
-             <span className="text-[15px] font-semibold text-foreground transition-colors block mb-1">{cap}</span>
-             <span className="text-[11px] text-muted-foreground leading-snug block group-hover:text-muted-foreground transition-colors whitespace-normal">
-               Native support for {cap.toLowerCase()} processing.
-             </span>
+        <PixelCard 
+          variant="blue" 
+          gap={5}
+          speed={40}
+          colors="#4f46e5,#6366f1,#818cf8,#e0e7ff"
+          className="relative flex flex-col items-start p-5 bg-card/50 hover:border-[#6366f1]/50 transition-all duration-300 group overflow-hidden h-[120px] w-full cursor-pointer"
+        >
+          <div className="relative z-10 w-full h-full flex flex-col items-start">
+            <Icon size={22} strokeWidth={1.5} className="text-muted-foreground group-hover:text-[#818cf8] transition-colors mb-auto" />
+            
+            <div className="mt-auto w-full pt-3 text-left">
+               <span className="text-[15px] font-semibold text-foreground transition-colors block mb-1">{cap}</span>
+               <span className="text-[11px] text-muted-foreground leading-snug block group-hover:text-muted-foreground transition-colors whitespace-normal">
+                 Native support for {cap.toLowerCase()} processing.
+               </span>
+            </div>
           </div>
-        </div>
-      </PixelCard>
+        </PixelCard>
+      </Link>
     );
   };
 

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Paperclip,
@@ -22,6 +23,7 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB default
 
 export function ChatInput() {
   const { sendMessage, isGenerating, stopGeneration, wallet, settings, addToast } = useStore();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -46,6 +48,21 @@ export function ChatInput() {
     t.style.height = 'auto';
     t.style.height = `${Math.min(t.scrollHeight, 220)}px`;
   }, [input]);
+
+  // Read prompt from URL
+  useEffect(() => {
+    const prompt = searchParams.get('prompt');
+    if (prompt) {
+      setInput(prompt);
+      const next = new URLSearchParams(searchParams);
+      next.delete('prompt');
+      setSearchParams(next, { replace: true });
+      
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+    }
+  }, [searchParams, setSearchParams]);
 
   // Voice input
   const toggleVoice = useCallback(() => {
