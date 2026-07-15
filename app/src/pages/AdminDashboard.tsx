@@ -5,6 +5,7 @@ import { Shield, Users, MessageSquare, TrendingUp, Activity, Settings, BarChart3
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { UserManagementModal } from '@/components/admin/UserManagementModal';
 
 type Tab = 'overview' | 'users' | 'analytics' | 'settings';
 
@@ -15,27 +16,39 @@ export function AdminDashboard() {
   const [stats, setStats] = useState({ totalUsers: 0, totalChats: 0, totalMessages: 0, proUsers: 0, premiumUsers: 0 });
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      let query = supabase.from('user_profiles').select('*').order('created_at', { ascending: false }).limit(50);
+      if (searchQuery) {
+        query = query.or(`display_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+      }
+      const { data: ud } = await query;
+      if (ud) setUsers(ud);
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
+  };
 
   useEffect(() => { if (!isLoading && role !== 'admin') navigate('/dashboard'); }, [isLoading, role, navigate]);
 
   useEffect(() => {
     if (role !== 'admin') return;
-    const fetch = async () => {
-      setLoading(true);
+    const fetchStats = async () => {
       try {
         const { count: tu } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true });
         const { count: pu } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('subscription_tier', 'pro');
         const { count: pru } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('subscription_tier', 'premium');
         const { count: tc } = await supabase.from('conversations').select('*', { count: 'exact', head: true });
         const { count: tm } = await supabase.from('messages').select('*', { count: 'exact', head: true });
-        const { data: ud } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false }).limit(50);
         setStats({ totalUsers: tu || 0, totalChats: tc || 0, totalMessages: tm || 0, proUsers: pu || 0, premiumUsers: pru || 0 });
-        if (ud) setUsers(ud);
       } catch { /* ignore */ }
-      finally { setLoading(false); }
     };
-    fetch();
-  }, [role]);
+    fetchStats();
+    fetchUsers();
+  }, [role, searchQuery]);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#050507]"><Loader2 size={20} className="animate-spin text-[var(--m-text-muted)]" /></div>;
   if (role !== 'admin') return null;
@@ -128,18 +141,28 @@ export function AdminDashboard() {
 
             {tab === 'users' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[15px] font-semibold text-[var(--m-text-primary)]">User Management</h3>
+                  <input 
+                    type="text" 
+                    placeholder="Search users..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-[var(--m-bg-elevated)] border border-white/[0.04] rounded-xl px-4 py-2 text-[12px] text-[var(--m-text-primary)] outline-none focus:border-[var(--m-accent-blue)] transition-colors w-64"
+                  />
+                </div>
                 <div className="rounded-2xl border border-white/[0.04] bg-[var(--m-bg-elevated)] overflow-hidden overflow-x-auto">
                   <table className="w-full text-[13px]">
                     <thead>
                       <tr className="bg-white/[0.02]">
-                        {['User', 'Role', 'Tier', 'Prompts', 'Joined'].map((h) => (
+                        {['User', 'Email', 'Role', 'Tier', 'Joined'].map((h) => (
                           <th key={h} className="text-left px-4 py-3 text-[10px] font-medium uppercase tracking-wider text-[var(--m-text-muted)]">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {users.map((u) => (
-                        <tr key={u.id} className="border-t border-white/[0.03]">
+                        <tr key={u.id} className="border-t border-white/[0.03] hover:bg-white/[0.02] cursor-pointer transition-colors" onClick={() => setSelectedUser(u)}>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-[var(--m-accent-blue-soft)] flex items-center justify-center text-[10px] font-medium text-[var(--m-accent-blue)]">
@@ -148,18 +171,19 @@ export function AdminDashboard() {
                               <span className="text-[var(--m-text-primary)]">{u.display_name || 'Unnamed'}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3"><span className={cn('text-[10px] px-2 py-0.5 rounded-full capitalize', u.role === 'admin' ? 'bg-[var(--m-accent-red)]/10 text-[var(--m-accent-red)]' : 'bg-white/[0.04] text-[var(--m-text-muted)]')}>{u.role}</span></td>
+                          <td className="px-4 py-3 text-[11px] text-[var(--m-text-muted)] truncate max-w-[150px]">{u.email || '-'}</td>
+                          <td className="px-4 py-3"><span className={cn('text-[10px] px-2 py-0.5 rounded-full capitalize', u.role === 'admin' || u.role === 'developer' ? 'bg-[var(--m-accent-red)]/10 text-[var(--m-accent-red)]' : 'bg-white/[0.04] text-[var(--m-text-muted)]')}>{u.role}</span></td>
                           <td className="px-4 py-3 text-[var(--m-text-muted)] capitalize">{u.subscription_tier}</td>
-                          <td className="px-4 py-3 text-[var(--m-text-primary)]">{u.prompt_count}</td>
                           <td className="px-4 py-3 text-[11px] text-[var(--m-text-muted)]">{new Date(u.created_at).toLocaleDateString()}</td>
                         </tr>
                       ))}
-                      {users.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--m-text-muted)]">No users</td></tr>}
+                      {users.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--m-text-muted)]">No users found</td></tr>}
                     </tbody>
                   </table>
                 </div>
               </motion.div>
             )}
+
 
             {tab === 'analytics' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
@@ -203,6 +227,13 @@ export function AdminDashboard() {
           </div>
         </div>
       </div>
+      {selectedUser && (
+        <UserManagementModal 
+          user={selectedUser} 
+          onClose={() => setSelectedUser(null)} 
+          onUpdated={fetchUsers} 
+        />
+      )}
     </div>
   );
 }
