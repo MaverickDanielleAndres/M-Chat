@@ -32,6 +32,8 @@ export interface Conversation {
   system_prompt?: string;
   userId?: string | null;
   synced?: boolean;
+  /** DB-authoritative message count (denormalized on the conversation row). */
+  messageCount?: number;
 }
 
 

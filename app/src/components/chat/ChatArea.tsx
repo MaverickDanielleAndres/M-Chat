@@ -22,17 +22,25 @@ import { Download } from 'lucide-react';
 
 
 export function ChatArea() {
-  const {
-    conversations,
-    activeConversationId,
-    aiStatus,
-    isGenerating,
-    wallet,
-    addToast,
-  } = useStore();
-  const conversation = conversations.find((c) => c.id === activeConversationId);
-  const messages = conversation?.messages || [];
+  // Use shallow selectors so this component only re-renders when its slice
+  // actually changes. Calling `useStore()` with a destructure re-renders on
+  // *every* store mutation, including high-frequency AI-stream updates that
+  // don't touch this surface.
+  const aiStatus = useStore((s) => s.aiStatus);
+  const isGenerating = useStore((s) => s.isGenerating);
+  const wallet = useStore((s) => s.wallet);
+  const addToast = useStore((s) => s.addToast);
+  const conversation = useStore((s) =>
+    s.conversations.find((c) => c.id === s.activeConversationId)
+  );
+  const messages = conversation?.messages ?? [];
   const hasMessages = messages.length > 0;
+  // Use DB-authoritative count when available (synced convs), otherwise fall
+  // back to the local message array. This avoids showing e.g. "2 messages"
+  // for a brand-new chat while the assistant placeholder is mid-stream.
+  const messageCount = conversation?.synced && conversation.messageCount != null
+    ? conversation.messageCount
+    : messages.length;
 
   const { containerRef, isAtBottom, handleScroll, scrollToBottom } = useAutoScroll([
     messages.length,
@@ -103,7 +111,7 @@ export function ChatArea() {
               {conversation?.title || 'New Conversation'}
             </h2>
             <p className="text-[10px] text-muted-foreground hidden sm:block">
-              {messages.length} {messages.length === 1 ? 'message' : 'messages'}
+              {messageCount} {messageCount === 1 ? 'message' : 'messages'}
               {!unlimited && wallet.daily_quota > 0 && ` · ${wallet.daily_used}/${wallet.daily_quota} prompts today`}
             </p>
           </div>

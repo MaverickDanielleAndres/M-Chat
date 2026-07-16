@@ -28,26 +28,27 @@ const SIDEBAR_WIDTH = 280;
 const SIDEBAR_COLLAPSED = 0;
 
 export function Sidebar() {
-  const {
-    conversations,
-    activeConversationId,
-    sidebarOpen,
-    searchQuery,
-    wallet,
-    isAuthed,
-    profile,
-    createConversation,
-    setActiveConversation,
-    deleteConversation,
-    renameConversation,
-    pinConversation,
-    duplicateConversation,
-    toggleSidebar,
-    setSidebarOpen,
-    setSearchQuery,
-    toggleSettings,
-    addToast,
-  } = useStore();
+  // Selector-style reads avoid re-rendering the entire sidebar on every
+  // conversation message update. Each action is stable across renders
+  // because Zustand actions are top-level references.
+  const conversations = useStore((s) => s.conversations);
+  const activeConversationId = useStore((s) => s.activeConversationId);
+  const sidebarOpen = useStore((s) => s.sidebarOpen);
+  const searchQuery = useStore((s) => s.searchQuery);
+  const wallet = useStore((s) => s.wallet);
+  const isAuthed = useStore((s) => s.isAuthed);
+  const profile = useStore((s) => s.profile);
+  const createConversation = useStore((s) => s.createConversation);
+  const setActiveConversation = useStore((s) => s.setActiveConversation);
+  const deleteConversation = useStore((s) => s.deleteConversation);
+  const renameConversation = useStore((s) => s.renameConversation);
+  const pinConversation = useStore((s) => s.pinConversation);
+  const duplicateConversation = useStore((s) => s.duplicateConversation);
+  const toggleSidebar = useStore((s) => s.toggleSidebar);
+  const setSidebarOpen = useStore((s) => s.setSidebarOpen);
+  const setSearchQuery = useStore((s) => s.setSearchQuery);
+  const toggleSettings = useStore((s) => s.toggleSettings);
+  const addToast = useStore((s) => s.addToast);
 
   const { signOut, user } = useSupabaseAuth();
   const navigate = useNavigate();

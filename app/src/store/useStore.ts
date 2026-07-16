@@ -38,20 +38,37 @@ import {
   insertAttachment,
   logUsage,
 } from '@/lib/conversations';
+import { extractText } from '@/lib/extract';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { SettingsRow, ProfileRow } from '@/types/db-helpers';
 
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
+/**
+ * Generates a real RFC4122 v4 UUID. All Supabase tables (conversations,
+ * messages, attachments, etc.) use `UUID PRIMARY KEY` columns, so client-side
+ * IDs MUST be valid UUIDs — otherwise the database rejects the row with
+ * `invalid input syntax for type uuid` (Postgres error `22P02`).
+ *
+ * `crypto.randomUUID` is available in modern browsers and Node ≥ 19. We fall
+ * back to a manually-constructed v4 for the rare runtime that lacks it.
+ */
 function generateId(): string {
-  // RFC4122-ish; collisions are vanishingly unlikely for our use case.
-  return (
-    Date.now().toString(36) +
-    '-' +
-    Math.random().toString(36).slice(2, 9) +
-    Math.random().toString(36).slice(2, 9)
-  );
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // RFC4122 v4 fallback (no crypto.randomUUID): 32 random hex chars + version
+  const bytes = new Uint8Array(16);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 const defaultSettings: AppSettings = {
@@ -309,6 +326,8 @@ export const useStore = create<StoreState>()(
                 createdAt: new Date(r.created_at).getTime(),
                 updatedAt: new Date(r.updated_at).getTime(),
                 messages: messages.map(rowToMessage),
+                messageCount: r.message_count ?? messages.length,
+                system_prompt: r.system_prompt ?? undefined,
               };
             })
           );
@@ -327,8 +346,47 @@ export const useStore = create<StoreState>()(
       },
 
       createConversation: async () => {
-        const id = generateId();
         const now = Date.now();
+        const userId = get().userId;
+
+        // Authed users: create the DB row first so the ID is a real UUID and
+        // the conversation survives a reload. The local entry takes the
+        // server-issued UUID so subsequent message inserts target the same row.
+        if (userId && isSupabaseConfigured) {
+          try {
+            const row = await dbCreateConversation({
+              user_id: userId,
+              title: 'New Conversation',
+              model: get().settings.defaultModel ?? 'gemini-2.0-flash',
+            });
+            if (row?.id) {
+              const conv: Conversation = {
+                id: row.id,
+                title: row.title ?? 'New Conversation',
+                messages: [],
+                createdAt: new Date(row.created_at).getTime(),
+                updatedAt: new Date(row.updated_at).getTime(),
+                pinned: row.pinned ?? false,
+                model: row.model,
+                userId: row.user_id,
+                system_prompt: row.system_prompt ?? undefined,
+                messageCount: row.message_count ?? 0,
+                synced: true,
+              };
+              set((s) => ({
+                conversations: [conv, ...s.conversations.filter((c) => c.id !== conv.id)],
+                activeConversationId: conv.id,
+              }));
+              return conv.id;
+            }
+          } catch (err) {
+            console.warn('[M-Chat] createConversation (DB) failed — falling back to local', err);
+          }
+        }
+
+        // Guest / offline: generate a real UUID locally so any later sync
+        // (once the user signs in) still targets a UUID column.
+        const id = generateId();
         const local: Conversation = {
           id,
           title: 'New Conversation',
@@ -341,7 +399,6 @@ export const useStore = create<StoreState>()(
           conversations: [local, ...s.conversations],
           activeConversationId: id,
         }));
-
         return id;
       },
 
@@ -350,6 +407,7 @@ export const useStore = create<StoreState>()(
       },
 
       deleteConversation: async (id) => {
+        const conv = get().conversations.find((c) => c.id === id);
         // Optimistic local removal
         set((s) => {
           const remaining = s.conversations.filter((c) => c.id !== id);
@@ -362,7 +420,10 @@ export const useStore = create<StoreState>()(
             activeConversationId: nextActive,
           };
         });
-        if (isSupabaseConfigured && get().userId) {
+        // Only hit the DB if this conversation actually persisted (real UUID
+        // assigned by Postgres). Local-only IDs are safe to drop without a
+        // server round-trip.
+        if (isSupabaseConfigured && get().userId && conv?.synced) {
           try {
             await dbDeleteConversation(id);
           } catch (err) {
@@ -524,13 +585,23 @@ export const useStore = create<StoreState>()(
         const conversation = get().conversations.find((c) => c.id === convId);
         if (!conversation) return;
 
-        // optimistic local user message
+        // optimistic local user message — attach FileAttachment metadata so the
+        // uploaded files render in the chat bubble without a round-trip.
         const userMessage: ChatMessage = {
           id: generateId(),
           role: 'user',
           content,
           timestamp: Date.now(),
           status: 'complete',
+          attachments: attachments?.length
+            ? attachments.map((f) => ({
+                id: generateId(),
+                name: f.name,
+                type: f.type,
+                size: f.size,
+                url: URL.createObjectURL(f),
+              }))
+            : undefined,
         };
         const assistantMessage: ChatMessage = {
           id: generateId(),
@@ -601,25 +672,27 @@ export const useStore = create<StoreState>()(
               }
             }
             if (dbConversationId) {
-              await dbInsertMessage({
+              const userMsgRow = await dbInsertMessage({
                 conversation_id: dbConversationId,
                 role: 'user' as any,
                 content,
                 status: 'complete' as any,
               });
-              if (attachments?.length) {
+              // Bump DB-authoritative message count locally so the header
+              // reflects truth without a full re-sync round-trip.
+              set((s) => ({
+                conversations: s.conversations.map((c) =>
+                  c.id === convId
+                    ? { ...c, messageCount: (c.messageCount ?? 0) + 1 }
+                    : c
+                ),
+              }));
+              if (attachments?.length && userMsgRow?.id) {
                 for (const file of attachments) {
                   try {
                     const { path, publicUrl } = await uploadFileToStorage(userId, file);
                     await insertAttachment({
-                      message_id: (
-                        await listMessages(dbConversationId)
-                      ).slice(-1)[0]?.id ?? (await dbInsertMessage({
-                        conversation_id: dbConversationId,
-                        role: 'user' as any,
-                        content: file.name,
-                        status: 'complete' as any,
-                      }))!.id,
+                      message_id: userMsgRow.id,
                       user_id: userId,
                       kind: guessAttachmentKind(file.type),
                       file_name: file.name,
@@ -686,6 +759,23 @@ export const useStore = create<StoreState>()(
           status: 'complete' as const,
         }));
 
+        // Pre-extract text from text-based attachments and inline it into the
+        // user's prompt so the AI can reason over document content even when
+        // Gemini rejects large PDFs. Inline-able files (images, small PDFs)
+        // are still sent as inlineData by the provider.
+        let aiPrompt = content;
+        if (attachments?.length) {
+          const excerpts: string[] = [];
+          for (const file of attachments) {
+            const text = await extractText(file);
+            if (text && text.length > 0) {
+              const clipped = text.length > 60_000 ? text.slice(0, 60_000) + '\n\n[…truncated…]' : text;
+              excerpts.push(`\n\n--- ${file.name} ---\n${clipped}`);
+            }
+          }
+          if (excerpts.length) aiPrompt = `${content}${excerpts.join('')}`;
+        }
+
         let fullContent = '';
         const startTime = Date.now();
         let tokensIn = 0;
@@ -694,7 +784,14 @@ export const useStore = create<StoreState>()(
 
         try {
           const { stream, usedFallback, fallbackReason: reason } =
-            await sendMessageWithFallback(messagesForAPI, attachments ?? [], content, get().settings.customInstructions);
+            await sendMessageWithFallback(
+              messagesForAPI,
+              attachments ?? [],
+              aiPrompt,
+              get().settings.customInstructions,
+              // Persona prompt wins over the default system instruction.
+              conversation.system_prompt || undefined
+            );
 
           fallbackReason = reason;
 
@@ -704,10 +801,20 @@ export const useStore = create<StoreState>()(
             get().addToast({ type: 'info', message: reason, duration: 6000 });
           }
 
-          for await (const chunk of parseSSEStream(stream)) {
-            if (chunk.done) break;
-            fullContent += chunk.content;
-            tokensOut += Math.ceil((chunk.content?.length ?? 0) / 4);
+          // Batch stream updates with rAF so we don't trigger a React render on every
+          // SSE chunk. Without this, a fast stream produces 60+ renders/sec and
+          // tanks typing/scroll responsiveness. We flush the latest content on
+          // every animation frame (~60Hz max) and also every 32ms as a safety
+          // net for non-active-tab cases where rAF can be throttled.
+          let pendingContent = '';
+          let rafScheduled = false;
+          let lastFlush = 0;
+          const flush = () => {
+            rafScheduled = false;
+            const toFlush = pendingContent;
+            pendingContent = '';
+            lastFlush = Date.now();
+            if (!toFlush) return;
             set((s) => ({
               conversations: s.conversations.map((c) =>
                 c.id === convId
@@ -715,20 +822,40 @@ export const useStore = create<StoreState>()(
                       ...c,
                       messages: c.messages.map((m) =>
                         m.id === assistantMessage.id
-                          ? { ...m, content: fullContent }
+                          ? { ...m, content: toFlush }
                           : m
                       ),
                     }
                   : c
               ),
             }));
+          };
+          const schedule = () => {
+            if (rafScheduled) return;
+            rafScheduled = true;
+            const elapsed = Date.now() - lastFlush;
+            if (elapsed >= 32) {
+              // Long enough since last flush; flush immediately so the UI
+              // updates even when rAF is throttled in background tabs.
+              flush();
+            } else {
+              requestAnimationFrame(flush);
+            }
+          };
+
+          for await (const chunk of parseSSEStream(stream)) {
+            if (chunk.done) break;
+            fullContent += chunk.content;
+            tokensOut += Math.ceil((chunk.content?.length ?? 0) / 4);
+            pendingContent = fullContent;
+            schedule();
           }
+          // Final flush so the last partial chunk is rendered.
+          flush();
 
           const latency = Date.now() - startTime;
           tokensIn = Math.ceil(
-            messagesForAPI
-              .filter((m) => m.role === 'user')
-              .reduce((sum, m) => sum + m.content.length, 0) / 4
+            aiPrompt.length / 4
           );
 
           set((s) => ({
@@ -762,6 +889,15 @@ export const useStore = create<StoreState>()(
                 latency_ms: latency,
                 model: usedFallback ? 'demo-fallback' : 'gemini-2.0-flash',
               });
+              // DB trigger bumps conversations.message_count on insert; mirror
+              // that locally so the header count stays correct between syncs.
+              set((s) => ({
+                conversations: s.conversations.map((c) =>
+                  c.id === convId
+                    ? { ...c, messageCount: (c.messageCount ?? 0) + 1 }
+                    : c
+                ),
+              }));
               await touchConversation(dbConversationId);
               await logUsage({
                 userId,
@@ -786,7 +922,12 @@ export const useStore = create<StoreState>()(
             isValidGeminiKey(import.meta.env.VITE_GEMINI_API_KEY || '')
           ) {
             try {
-              const provider = createAIProvider('gemini', import.meta.env.VITE_GEMINI_API_KEY);
+              const provider = createAIProvider(
+                'gemini',
+                import.meta.env.VITE_GEMINI_API_KEY,
+                get().settings.customInstructions,
+                conversation.system_prompt || undefined
+              );
               const allMessages = get()
                 .conversations.find((c) => c.id === convId)?.messages || [];
               const title = await provider.generateTitle?.(allMessages);
@@ -883,7 +1024,13 @@ export const useStore = create<StoreState>()(
       deleteMessage: async (convId, msgId) => {
         set((state) => ({
           conversations: state.conversations.map((c) =>
-            c.id === convId ? { ...c, messages: c.messages.filter((m) => m.id !== msgId) } : c
+            c.id === convId
+              ? {
+                  ...c,
+                  messages: c.messages.filter((m) => m.id !== msgId),
+                  messageCount: Math.max(0, (c.messageCount ?? 0) - 1),
+                }
+              : c
           ),
         }));
         if (isSupabaseConfigured && get().userId) {
@@ -1019,7 +1166,8 @@ function mergeConversations(local: Conversation[], remote: Conversation[]): Conv
   return Array.from(byId.values()).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-function rowToMessage(row: import('@/types/db-helpers').MessageRow): ChatMessage {
+function rowToMessage(row: any): ChatMessage {
+  const atts = Array.isArray(row.attachments) ? row.attachments : [];
   return {
     id: row.id,
     role: row.role as ChatMessage['role'],
@@ -1027,6 +1175,15 @@ function rowToMessage(row: import('@/types/db-helpers').MessageRow): ChatMessage
     timestamp: new Date(row.created_at).getTime(),
     status: row.status as ChatMessage['status'],
     liked: row.liked,
+    attachments: atts.length
+      ? atts.map((a: any) => ({
+          id: a.id,
+          name: a.file_name,
+          type: a.mime_type,
+          size: Number(a.size_bytes ?? 0),
+          url: a.public_url ?? '',
+        }))
+      : undefined,
   };
 }
 

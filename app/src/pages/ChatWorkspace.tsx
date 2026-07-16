@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { useStore } from '@/store/useStore';
 import { useTheme } from '@/hooks/useTheme';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -7,14 +7,19 @@ import { ChatArea } from '@/components/chat/ChatArea';
 import { SettingsModal } from '@/components/modals/SettingsModal';
 import { LimitModal } from '@/components/modals/LimitModal';
 import { ToastSystem } from '@/components/ui/ToastSystem';
-import { DeveloperPanel } from '@/components/ui/DeveloperPanel';
 import { Footer } from '@/components/ui/Footer';
 import { useSearchParams } from 'react-router';
+
+// DeveloperPanel pulls in recharts (~250kB). Lazy-load it so the main chat
+// bundle stays small.
+const DeveloperPanel = lazy(() =>
+  import('@/components/ui/DeveloperPanel').then((m) => ({ default: m.DeveloperPanel }))
+);
 
 let isCreatingOnMount = false;
 
 export function ChatWorkspace() {
-  const { createConversation, conversations, bootstrap, toggleSettings } = useStore();
+  const { createConversation, bootstrap, toggleSettings } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
 
   useTheme();
@@ -58,7 +63,9 @@ export function ChatWorkspace() {
       <SettingsModal />
       <LimitModal />
       <ToastSystem />
-      <DeveloperPanel />
+      <Suspense fallback={null}>
+        <DeveloperPanel />
+      </Suspense>
     </div>
   );
 }

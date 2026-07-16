@@ -1,5 +1,50 @@
 import { GoogleGenAI } from '@google/genai';
 import type { AIProvider, ChatMessage } from '@/types';
+import { supabase } from '@/lib/supabase';
+
+/**
+ * If VITE_GEMINI_PROXY_URL is set (e.g.
+ *   `${VITE_SUPABASE_URL}/functions/v1/gemini-proxy`),
+ * route AI calls through the Supabase Edge Function so the API key never
+ * ships to the browser. The proxy requires a JWT and applies rate-limiting.
+ *
+ * Falls back to direct-from-browser when the proxy URL isn't configured
+ * (development mode), preserving the current behavior.
+ */
+const PROXY_URL: string | undefined = (() => {
+  const v = import.meta.env.VITE_GEMINI_PROXY_URL;
+  return typeof v === 'string' && v.trim() ? v.trim() : undefined;
+})();
+
+interface ProxyRequest {
+  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  attachments?: Array<{ mimeType: string; data: string }>;
+  model?: string;
+  systemInstruction?: string;
+  stream?: boolean;
+}
+
+async function readProxyAccessToken(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Convert a File to base64 inlineData suitable for the proxy. */
+async function fileToInlineData(
+  file: File
+): Promise<{ mimeType: string; data: string }> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+  return { mimeType: file.type, data: dataUrl.split(',')[1] ?? '' };
+}
 
 export interface AIStreamChunk {
   content: string;
@@ -36,24 +81,6 @@ export function isValidGeminiKey(key: string | undefined | null): boolean {
   const trimmed = key.trim();
   // Any key that is at least 20 characters and not an obvious placeholder
   return trimmed.length >= 20 && !trimmed.includes('your-key') && !trimmed.includes('YOUR_');
-}
-
-// ---------------------------------------------------------------------------
-// file -> inline data helper
-// ---------------------------------------------------------------------------
-async function fileToInlineData(
-  file: File
-): Promise<{ inlineData: { data: string; mimeType: string } }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const base64 = dataUrl.split(',')[1];
-      resolve({ inlineData: { data: base64, mimeType: file.type } });
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -105,17 +132,67 @@ class GeminiProvider implements AIProvider {
 
   private ai: GoogleGenAI;
   private customInstructions?: string;
+  /** Per-conversation persona system prompt (overrides the base instruction). */
+  private personaPrompt?: string;
 
-  constructor(apiKey: string, customInstructions?: string) {
+  constructor(apiKey: string, customInstructions?: string, personaPrompt?: string) {
     this.ai = new GoogleGenAI({ apiKey });
     this.model = resolveModel();
     this.customInstructions = customInstructions;
+    this.personaPrompt = personaPrompt;
   }
 
   async sendMessage(
     messages: ChatMessage[],
     attachments?: File[]
   ): Promise<ReadableStream<Uint8Array>> {
+    // ----- Proxy path: server-side Gemini key ---------------------------
+    if (PROXY_URL) {
+      const proxyAttachments = attachments?.length
+        ? await Promise.all(
+            attachments.map((f) => fileToInlineData(f).catch(() => null))
+          ).then((arr) => arr.filter(Boolean) as Array<{ mimeType: string; data: string }>)
+        : undefined;
+
+      const payload: ProxyRequest = {
+        messages: messages.map((m) => ({
+          role: m.role === 'system' ? 'system' : (m.role as 'user' | 'assistant'),
+          content: m.content,
+        })),
+        attachments: proxyAttachments,
+        model: this.model,
+        systemInstruction:
+          this.personaPrompt && this.personaPrompt.trim()
+            ? this.personaPrompt
+            : buildSystemInstruction(this.customInstructions),
+        stream: true,
+      };
+
+      const token = await readProxyAccessToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const upstream = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      if (!upstream.ok || !upstream.body) {
+        const errText = await upstream.text().catch(() => '');
+        throw new AIProviderError(
+          `Gemini proxy error: ${upstream.status} ${errText.slice(0, 200)}`,
+          upstream.status
+        );
+      }
+
+      // The proxy streams raw SSE that already matches the OpenAI-style
+      // `choices[0].delta.content` shape we parse downstream, so just pass
+      // it through.
+      return upstream.body;
+    }
+
+    // ----- Direct-from-browser path ------------------------------------
     const encoder = new TextEncoder();
 
     const history = messages.slice(0, -1).map((m) => ({
@@ -131,7 +208,8 @@ class GeminiProvider implements AIProvider {
     if (attachments && attachments.length > 0) {
       for (const file of attachments) {
         try {
-          userParts.push(await fileToInlineData(file));
+          const data = await fileToInlineData(file);
+          userParts.push({ inlineData: data });
         } catch {
           /* skip files that can't be read */
         }
@@ -142,7 +220,13 @@ class GeminiProvider implements AIProvider {
       model: this.model,
       history,
       config: {
-        systemInstruction: buildSystemInstruction(this.customInstructions),
+        // Persona prompt wins over the base instruction when present, so
+        // selecting "Senior Developer" actually produces developer-style
+        // responses instead of the default assistant voice.
+        systemInstruction:
+          (this.personaPrompt && this.personaPrompt.trim()
+            ? this.personaPrompt
+            : buildSystemInstruction(this.customInstructions)),
         maxOutputTokens: 8192,
         temperature: 0.7,
         topP: 0.95,
@@ -197,10 +281,10 @@ class GeminiProvider implements AIProvider {
 // ---------------------------------------------------------------------------
 // Provider factory
 // ---------------------------------------------------------------------------
-export function createAIProvider(providerId: string, apiKey: string, customInstructions?: string): AIProvider {
+export function createAIProvider(providerId: string, apiKey: string, customInstructions?: string, personaPrompt?: string): AIProvider {
   switch (providerId) {
     case 'gemini':
-      return new GeminiProvider(apiKey, customInstructions);
+      return new GeminiProvider(apiKey, customInstructions, personaPrompt);
     default:
       throw new Error(`Unknown AI provider: ${providerId}`);
   }
@@ -367,7 +451,8 @@ export async function sendMessageWithFallback(
   messages: ChatMessage[],
   attachments: File[] | undefined,
   userPrompt: string,
-  customInstructions?: string
+  customInstructions?: string,
+  personaPrompt?: string
 ): Promise<SendMessageResult> {
   // Try each key in the pool
   const pool = buildKeyPool();
@@ -382,7 +467,7 @@ export async function sendMessageWithFallback(
   let lastError: AIProviderError | null = null;
   for (const key of pool) {
     try {
-      const provider = createAIProvider('gemini', key, customInstructions);
+      const provider = createAIProvider('gemini', key, customInstructions, personaPrompt);
       const stream = await provider.sendMessage(messages, attachments);
       return { stream, usedFallback: false };
     } catch (err) {

@@ -70,7 +70,7 @@ export async function listMessages(conversationId: string) {
   if (!isSupabaseConfigured) return [] as MessageRow[];
   const { data, error } = await supabase
     .from('messages')
-    .select('*')
+    .select('*, attachments(*)')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true })
     .limit(500);
@@ -306,11 +306,47 @@ export async function fetchSettings(userId: string) {
   return data;
 }
 
+/**
+ * Convert app-side camelCase settings keys to DB snake_case columns.
+ * The `app_settings` table uses snake_case columns; the client-side store
+ * uses camelCase. Naive `upsert(patch)` would send `animationsEnabled` and
+ * Postgres would create a row with that column missing — every setting would
+ * silently no-op. This mapper is the single source of truth.
+ */
+const SETTINGS_KEY_MAP: Record<string, string> = {
+  theme: 'theme',
+  language: 'language',
+  animationsEnabled: 'animations_enabled',
+  fontSize: 'font_size',
+  developerMode: 'developer_mode',
+  soundEnabled: 'sound_enabled',
+  enterToSend: 'enter_to_send',
+  streamResponses: 'stream_responses',
+  showTokenCounts: 'show_token_counts',
+  density: 'density',
+  accentColor: 'accent_color',
+  fontFamily: 'font_family',
+  customInstructions: 'custom_instructions',
+  defaultModel: 'default_model',
+};
+
+export function settingsToDbRow(
+  patch: Record<string, unknown>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(patch)) {
+    const col = SETTINGS_KEY_MAP[k];
+    if (col) out[col] = v;
+  }
+  return out;
+}
+
 export async function upsertSettings(userId: string, patch: Record<string, unknown>) {
   if (!isSupabaseConfigured) return null;
+  const dbPatch = settingsToDbRow(patch);
   const { data, error } = await supabase
     .from('app_settings')
-    .upsert({ user_id: userId, ...patch, updated_at: new Date().toISOString() })
+    .upsert({ user_id: userId, ...dbPatch, updated_at: new Date().toISOString() })
     .select()
     .single();
   if (error) {

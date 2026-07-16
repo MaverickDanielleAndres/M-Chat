@@ -26,6 +26,19 @@ function getApiKey(): string | null {
   return keys[0] || null;
 }
 
+/**
+ * Model candidates for image generation. The order is most-preferred first:
+ * we try each one until one returns inline image data. This insulates the
+ * client from upstream model deprecations (Gemini has renamed its image
+ * generation model several times in the past year).
+ */
+const IMAGE_MODEL_CANDIDATES = [
+  'gemini-2.5-flash-image-preview',
+  'gemini-2.0-flash-exp',
+  'gemini-2.0-flash-preview-image-generation',
+  'imagen-3.0-generate-002',
+];
+
 export async function generateImage(
   prompt: string,
   options: ImageGenerationOptions = {}
@@ -36,37 +49,45 @@ export async function generateImage(
   }
 
   const ai = new GoogleGenAI({ apiKey });
+  const errors: string[] = [];
 
-  // Use the image generation model
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash-preview-image-generation',
-    contents: prompt,
-    config: {
-      responseModalities: ['TEXT', 'IMAGE'],
-      numberOfImages: options.numberOfImages ?? 1,
-    } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  });
+  for (const model of IMAGE_MODEL_CANDIDATES) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          responseModalities: ['TEXT', 'IMAGE'],
+          numberOfImages: options.numberOfImages ?? 1,
+        } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      });
 
-  const results: ImageGenerationResult[] = [];
+      const results: ImageGenerationResult[] = [];
+      const parts = (response as any).candidates?.[0]?.content?.parts ?? [];
+      for (const part of parts) {
+        const p = part as any;
+        if (p.inlineData?.data && p.inlineData?.mimeType) {
+          const mimeType = p.inlineData.mimeType as string;
+          const imageUrl = `data:${mimeType};base64,${p.inlineData.data}`;
+          results.push({ imageUrl, mimeType, prompt });
+        }
+      }
 
-  const parts = response.candidates?.[0]?.content?.parts ?? [];
-  for (const part of parts) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const p = part as any;
-    if (p.inlineData?.data && p.inlineData?.mimeType) {
-      const mimeType = p.inlineData.mimeType as string;
-      const imageUrl = `data:${mimeType};base64,${p.inlineData.data}`;
-      results.push({ imageUrl, mimeType, prompt });
+      if (results.length > 0) return results;
+      errors.push(`${model}: returned no image data`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Only continue past auth/quota errors when there is another candidate.
+      if (/api[_ ]?key|invalid[_ ]?key|401|403/i.test(msg)) {
+        throw err;
+      }
+      errors.push(`${model}: ${msg}`);
     }
   }
 
-  if (results.length === 0) {
-    throw new Error(
-      'Image generation returned no images. The model may not support image output — try a more descriptive prompt.'
-    );
-  }
-
-  return results;
+  throw new Error(
+    `Image generation unavailable across all models. ${errors.slice(-3).join(' | ')}`
+  );
 }
 
 /**
