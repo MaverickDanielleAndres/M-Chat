@@ -173,7 +173,7 @@ export function SettingsModal() {
           {/* Body */}
           <div className="flex flex-1 min-h-0">
             {/* Side tabs */}
-            <nav className="hidden sm:flex flex-col w-44 border-r border-border p-2 gap-0.5 flex-shrink-0">
+            <nav className="hidden sm:flex w-44 border-r border-border p-2 gap-0.5 flex-col flex-shrink-0">
               {tabs.map((t) => {
                 const Icon = t.icon;
                 return (
