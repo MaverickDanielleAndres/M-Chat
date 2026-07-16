@@ -357,7 +357,7 @@ export function ChatInput() {
           type="button"
           onClick={() => updateSettings({ webSearchEnabled: !webSearchEnabled })}
           className={cn(
-            'w-9 h-9 inline-flex items-center justify-center rounded-xl flex-shrink-0 hidden sm:flex transition-colors',
+            'w-9 h-9 hidden sm:inline-flex items-center justify-center rounded-xl flex-shrink-0 transition-colors',
             webSearchEnabled
               ? 'bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
@@ -375,7 +375,7 @@ export function ChatInput() {
             onClick={toggleVoice}
             disabled={isGenerating || atLimit || isGeneratingImage}
             className={cn(
-              'w-9 h-9 flex items-center justify-center rounded-xl transition-colors flex-shrink-0 hidden sm:flex',
+              'w-9 h-9 hidden sm:inline-flex items-center justify-center rounded-xl transition-colors flex-shrink-0',
               isListening
                 ? 'text-red-400 bg-red-500/15 hover:bg-red-500/25 animate-pulse'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30'
