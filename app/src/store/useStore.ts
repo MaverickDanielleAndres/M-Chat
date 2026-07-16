@@ -259,11 +259,13 @@ export const useStore = create<StoreState>()(
         }
         
         try {
-          await ensureWallet(userId ?? '');
-          const remoteSettings = (await fetchSettings(userId ?? '')) as SettingsRow | null;
-          if (remoteSettings) {
-            const merged = mergeRemoteSettings(remoteSettings, get().settings);
-            set({ settings: merged });
+          if (userId) {
+            await ensureWallet(userId);
+            const remoteSettings = (await fetchSettings(userId)) as SettingsRow | null;
+            if (remoteSettings) {
+              const merged = mergeRemoteSettings(remoteSettings, get().settings);
+              set({ settings: merged });
+            }
           }
           await get().syncConversations();
         } catch (err) {
@@ -340,28 +342,6 @@ export const useStore = create<StoreState>()(
           activeConversationId: id,
         }));
 
-        const userId = get().userId;
-        if (userId && isSupabaseConfigured) {
-          try {
-            const row = await dbCreateConversation({
-              user_id: userId,
-              title: local.title,
-              model: 'gemini-2.0-flash',
-            });
-            if (row) {
-              const synced: Conversation = { ...local, id: row.id, synced: true };
-              set((s) => ({
-                conversations: s.conversations.map((c) =>
-                  c.id === id ? synced : c
-                ),
-                activeConversationId: synced.id,
-              }));
-              return synced.id;
-            }
-          } catch (err) {
-            console.warn('[M-Chat] createConversation sync failed', err);
-          }
-        }
         return id;
       },
 

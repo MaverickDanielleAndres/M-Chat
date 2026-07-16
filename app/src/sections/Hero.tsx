@@ -192,7 +192,7 @@ export function Hero() {
           >
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] font-medium mb-5 border border-indigo-500/30 bg-indigo-500/10 text-indigo-500">
               <Zap size={11} strokeWidth={2} />
-              <span>Powered by Qwen AI · Free to start</span>
+              <span>Powered by Gemini · Free to start</span>
             </div>
 
             <div className="mb-2 overflow-hidden">

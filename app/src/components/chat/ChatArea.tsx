@@ -96,7 +96,7 @@ export function ChatArea() {
   return (
     <div className="flex flex-col h-full relative bg-background">
       {/* Header — hamburger removed: collapsed sidebar has its own expand trigger */}
-      <header className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-border/60 flex-shrink-0 bg-background/80 backdrop-blur-sm">
+      <header className="relative z-10 flex items-center justify-between px-3 sm:px-4 h-12 border-b border-border/60 flex-shrink-0 bg-background/80 backdrop-blur-sm">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <div className="min-w-0 flex-1">
             <h2 className="text-[13px] sm:text-sm font-medium truncate text-foreground">

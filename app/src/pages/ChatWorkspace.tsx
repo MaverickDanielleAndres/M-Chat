@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useStore } from '@/store/useStore';
 import { useTheme } from '@/hooks/useTheme';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -10,6 +10,8 @@ import { ToastSystem } from '@/components/ui/ToastSystem';
 import { DeveloperPanel } from '@/components/ui/DeveloperPanel';
 import { Footer } from '@/components/ui/Footer';
 import { useSearchParams } from 'react-router';
+
+let isCreatingOnMount = false;
 
 export function ChatWorkspace() {
   const { createConversation, conversations, bootstrap, toggleSettings } = useStore();
@@ -33,8 +35,13 @@ export function ChatWorkspace() {
   }, []);
 
   useEffect(() => {
-    if (conversations.length === 0) {
-      void createConversation();
+    if (useStore.getState().conversations.length === 0 && !isCreatingOnMount) {
+      isCreatingOnMount = true;
+      void createConversation().finally(() => {
+        setTimeout(() => {
+          isCreatingOnMount = false;
+        }, 1000);
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
