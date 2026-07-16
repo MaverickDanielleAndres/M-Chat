@@ -107,11 +107,11 @@ export function WhyMChatCarousel({
                   className={cn(
                     "shrink-0 snap-center flex items-center justify-center gap-2 px-5 py-3 rounded-full text-center border transition-colors duration-300",
                     isActive
-                      ? "bg-indigo-500 text-foreground border-[var(--m-accent-blue)] shadow-[0_0_15px_rgba(99,102,241,0.3)]"
-                      : "bg-white/5 text-foreground/70 border-white/10 hover:bg-white/10 hover:text-foreground"
+                      ? "bg-indigo-500 text-white border-[var(--m-accent-blue)] shadow-[0_0_15px_rgba(99,102,241,0.3)]"
+                      : "bg-foreground/5 text-foreground/70 border-foreground/10 hover:bg-foreground/10 hover:text-foreground"
                   )}
                 >
-                  <feature.icon size={16} strokeWidth={1.8} className={isActive ? "text-foreground" : "text-foreground/50"} />
+                  <feature.icon size={16} strokeWidth={1.8} className={isActive ? "text-white" : "text-foreground/50"} />
                   <span className="font-semibold text-xs tracking-tight uppercase whitespace-nowrap">
                     {feature.label}
                   </span>
@@ -121,8 +121,8 @@ export function WhyMChatCarousel({
           </div>
 
           {/* Desktop Fade */}
-          <div className="hidden lg:block absolute inset-x-0 top-0 h-14 z-30 pointer-events-none bg-gradient-to-b from-[#0a0a10] to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-14 z-30 pointer-events-none bg-gradient-to-t from-[#0a0a10] to-transparent" />
+          <div className="hidden lg:block absolute inset-x-0 top-0 h-14 z-30 pointer-events-none bg-gradient-to-b from-card to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-14 z-30 pointer-events-none bg-gradient-to-t from-card to-transparent" />
 
           {/* Desktop Track */}
           <div className="hidden lg:block relative w-full max-w-[260px] mx-auto z-10" style={{ height: trackHeight }}>
@@ -153,11 +153,11 @@ export function WhyMChatCarousel({
                     className={cn(
                       "absolute inset-x-0 flex items-center justify-center gap-2 px-4 rounded-full text-center border transition-colors duration-300",
                       isActive
-                        ? "bg-indigo-500 text-foreground border-[var(--m-accent-blue)] z-20 shadow-[0_0_15px_rgba(99,102,241,0.3)]"
-                        : "bg-white/5 text-foreground/70 border-white/10 hover:bg-white/10 hover:text-foreground"
+                        ? "bg-indigo-500 text-white border-[var(--m-accent-blue)] z-20 shadow-[0_0_15px_rgba(99,102,241,0.3)]"
+                        : "bg-foreground/5 text-foreground/70 border-foreground/10 hover:bg-foreground/10 hover:text-foreground"
                     )}
                   >
-                    <feature.icon size={14} strokeWidth={1.8} className={isActive ? "text-foreground" : "text-foreground/50"} />
+                    <feature.icon size={14} strokeWidth={1.8} className={isActive ? "text-white" : "text-foreground/50"} />
                     <span className="font-semibold text-xs tracking-tight uppercase truncate">
                       {feature.label}
                     </span>
@@ -190,7 +190,7 @@ export function WhyMChatCarousel({
                     zIndex: isActive ? 20 : isPrev || isNext ? 10 : 0,
                   }}
                   transition={{ type: "spring", stiffness: 220, damping: 32, mass: 0.85 }}
-                  className="absolute inset-0 rounded-2xl overflow-hidden border border-border bg-[#12121a] shadow-2xl flex flex-col p-8"
+                  className="absolute inset-0 rounded-2xl overflow-hidden border border-border bg-card shadow-2xl flex flex-col p-8"
                 >
                   <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-6">
                     <feature.icon size={24} className="text-indigo-500" />
@@ -208,7 +208,7 @@ export function WhyMChatCarousel({
               <div
                 key={f.id}
                 onClick={() => handleChipClick(i)}
-                className={cn("rounded-full cursor-pointer transition-all duration-300", i === currentIndex ? "w-4 bg-indigo-500" : "w-1.5 bg-white/20")}
+                className={cn("rounded-full cursor-pointer transition-all duration-300", i === currentIndex ? "w-4 bg-indigo-500" : "w-1.5 bg-foreground/20")}
                 style={{ height: '4px' }}
               />
             ))}

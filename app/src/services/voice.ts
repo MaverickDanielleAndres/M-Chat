@@ -1,8 +1,8 @@
 /**
  * M-Chat Voice Service
- * Speech-to-text (STT) and Text-to-speech (TTS) using the Web Speech API.
- * Uses type assertions to handle browsers where the Web Speech API types
- * aren't included in the TS lib.
+ * Speech-to-text (STT) and Text-to-speech (TTS) using Web Speech API
+ * Uses type assertions to handle browsers where the Web Speech API
+ * types aren't included in the TS lib.
  */
 
 // ---------------------------------------------------------------------------
@@ -22,9 +22,8 @@ export class SpeechToText {
   private isListening = false;
 
   static isSupported(): boolean {
-    return (
-      typeof window !== 'undefined' &&
-      ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+    return typeof window !== 'undefined' && (
+      'SpeechRecognition' in window || 'webkitSpeechRecognition' in window
     );
   }
 
@@ -36,11 +35,10 @@ export class SpeechToText {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
-    const SpeechRecognitionAPI =
-      w.SpeechRecognition || w.webkitSpeechRecognition;
+    const SpeechRecognitionAPI = w.SpeechRecognition || w.webkitSpeechRecognition;
     this.recognition = new SpeechRecognitionAPI();
     this.recognition.lang = options.language || 'en-US';
-    this.recognition.continuous = options.continuous ?? false;
+    this.recognition.continuous = options.continuous ?? true;
     this.recognition.interimResults = true;
     this.recognition.maxAlternatives = 1;
 
@@ -93,11 +91,11 @@ export class SpeechToText {
 // Text-to-Speech
 // ---------------------------------------------------------------------------
 export interface TTSOptions {
-  rate?: number;
-  pitch?: number;
-  volume?: number;
-  voice?: string;
-  language?: string;
+  rate?: number;       // 0.1 – 10, default 1
+  pitch?: number;      // 0 – 2, default 1
+  volume?: number;     // 0 – 1, default 1
+  voice?: string;      // voice name
+  language?: string;   // e.g. 'en-US'
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (error: string) => void;
@@ -108,9 +106,7 @@ export class TextToSpeech {
   private speaking = false;
 
   static isSupported(): boolean {
-    return (
-      typeof window !== 'undefined' && 'speechSynthesis' in window
-    );
+    return typeof window !== 'undefined' && 'speechSynthesis' in window;
   }
 
   static getVoices(): SpeechSynthesisVoice[] {
@@ -124,8 +120,10 @@ export class TextToSpeech {
       return;
     }
 
+    // Cancel any current speech
     this.stop();
 
+    // Strip markdown for clean speech
     const cleanText = text
       .replace(/```[\s\S]*?```/g, 'code block')
       .replace(/`([^`]+)`/g, '$1')
@@ -183,7 +181,7 @@ export class TextToSpeech {
 }
 
 // ---------------------------------------------------------------------------
-// Singletons
+// Singleton instances
 // ---------------------------------------------------------------------------
 export const stt = new SpeechToText();
 export const tts = new TextToSpeech();

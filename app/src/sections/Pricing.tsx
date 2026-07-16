@@ -97,7 +97,7 @@ export function Pricing() {
               </ul>
 
               <Link
-                to="/signup"
+                to={plan.price_monthly === 0 ? '/signup' : `/upgrade?plan=${plan.slug}`}
                 className={cn(
                   'w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-medium transition-all',
                   plan.highlight

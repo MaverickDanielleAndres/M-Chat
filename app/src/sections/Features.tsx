@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { Link } from 'react-router';
 import { motion, useInView } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -47,53 +48,58 @@ function FeatureCard({
       initial={{ opacity: 0, y: 28 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.55, delay: index * 0.07, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className={`bento-card group relative rounded-2xl border border-border bg-card/60 p-6 ${
-        isFeatured ? 'md:col-span-2 md:p-8' : ''
+      className={`bento-card group relative rounded-2xl border border-border bg-card/60 p-0 overflow-hidden ${
+        isFeatured ? 'md:col-span-2' : ''
       }`}
     >
-      {/* Icon */}
-      <div
-        className={`flex items-center justify-center rounded-xl mb-5 transition-transform duration-300 group-hover:scale-110 ${
-          isFeatured ? 'w-14 h-14' : 'w-10 h-10'
-        }`}
-        style={{ backgroundColor: `${color}18`, color }}
+      <Link 
+        to={`/chat?prompt=${encodeURIComponent(`Show me how to use the ${feature.title} feature`)}`}
+        className={`block w-full h-full focus:outline-none cursor-pointer ${isFeatured ? 'p-6 md:p-8' : 'p-6'}`}
       >
-        <Icon
-          size={isFeatured ? 22 : 17}
-          strokeWidth={1.5}
-        />
-      </div>
-
-      {isFeatured && (
-        <span
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold mb-4 border"
-          style={{ color, borderColor: `${color}30`, backgroundColor: `${color}10` }}
+        {/* Icon */}
+        <div
+          className={`flex items-center justify-center rounded-xl mb-5 transition-transform duration-300 group-hover:scale-110 ${
+            isFeatured ? 'w-14 h-14' : 'w-10 h-10'
+          }`}
+          style={{ backgroundColor: `${color}18`, color }}
         >
-          <Sparkles size={9} strokeWidth={2} />
-          Core Feature
-        </span>
-      )}
+          <Icon
+            size={isFeatured ? 22 : 17}
+            strokeWidth={1.5}
+          />
+        </div>
 
-      <h3
-        className={`font-display font-semibold text-foreground mb-2 ${
-          isFeatured ? 'text-[20px]' : 'text-[15px]'
-        }`}
-      >
-        {feature.title}
-      </h3>
-      <p
-        className={`text-muted-foreground leading-relaxed ${
-          isFeatured ? 'text-[14px] max-w-md' : 'text-[13px]'
-        }`}
-      >
-        {feature.description}
-      </p>
+        {isFeatured && (
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold mb-4 border"
+            style={{ color, borderColor: `${color}30`, backgroundColor: `${color}10` }}
+          >
+            <Sparkles size={9} strokeWidth={2} />
+            Core Feature
+          </span>
+        )}
 
-      {/* Bottom accent line on hover */}
-      <div
-        className="absolute bottom-0 left-6 right-6 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{ background: `linear-gradient(to right, transparent, ${color}60, transparent)` }}
-      />
+        <h3
+          className={`font-display font-semibold text-foreground mb-2 ${
+            isFeatured ? 'text-[20px]' : 'text-[15px]'
+          }`}
+        >
+          {feature.title}
+        </h3>
+        <p
+          className={`text-muted-foreground leading-relaxed ${
+            isFeatured ? 'text-[14px] max-w-md' : 'text-[13px]'
+          }`}
+        >
+          {feature.description}
+        </p>
+
+        {/* Bottom accent line on hover */}
+        <div
+          className="absolute bottom-0 left-6 right-6 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          style={{ background: `linear-gradient(to right, transparent, ${color}60, transparent)` }}
+        />
+      </Link>
     </motion.div>
   );
 }

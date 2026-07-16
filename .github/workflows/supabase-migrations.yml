@@ -1,0 +1,96 @@
+name: 🗄️ Supabase Migrations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/supabase/migrations/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/supabase/migrations/**'
+  workflow_dispatch:
+
+jobs:
+  validate-migrations:
+    name: 🔍 Validate Migration Files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔍 Check migration file naming
+        run: |
+          echo "🔍 Validating migration files..."
+          for f in app/supabase/migrations/*.sql; do
+            filename=$(basename "$f")
+            if [[ ! "$filename" =~ ^[0-9]{14}_[a-z0-9_]+\.sql$ ]]; then
+              echo "❌ Invalid migration filename: $filename"
+              echo "Expected format: YYYYMMDDHHMMSS_description.sql"
+              exit 1
+            fi
+            echo "✅ $filename"
+          done
+          echo "✅ All migration files are valid"
+
+      - name: 📋 List pending migrations
+        run: |
+          echo "## 📋 Migration Files" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          for f in app/supabase/migrations/*.sql; do
+            echo "- \`$(basename $f)\`" >> $GITHUB_STEP_SUMMARY
+          done
+
+  apply-migrations:
+    name: 🚀 Apply to Production
+    needs: validate-migrations
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: 🗄️ Apply migrations via Supabase CLI
+        run: |
+          echo "Applying migrations to Supabase project..."
+          supabase db push --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        working-directory: app
+
+      - name: ✅ Report success
+        uses: actions/github-script@v7
+        if: success()
+        with:
+          script: |
+            const fs = require('fs');
+            const files = fs.readdirSync('app/supabase/migrations').filter(f => f.endsWith('.sql'));
+            const body = `## ✅ Database Migrations Applied\n\n**Applied migrations:**\n${files.map(f => `- \`${f}\``).join('\n')}\n\n**Commit**: \`${context.sha.substring(0, 8)}\`\n**Time**: ${new Date().toUTCString()}`;
+            
+            // Find related issue from commit message
+            const { data: commit } = await github.rest.repos.getCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+            });
+            
+            const issueMatch = commit.commit.message.match(/#(\d+)/);
+            if (issueMatch) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(issueMatch[1]),
+                body,
+              });
+            }

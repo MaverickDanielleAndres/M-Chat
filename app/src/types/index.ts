@@ -36,6 +36,7 @@ export interface Conversation {
   messageCount?: number;
 }
 
+
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 export type AIStatus = 'online' | 'thinking' | 'generating' | 'offline' | 'error';
@@ -63,6 +64,8 @@ export interface AppSettings {
   fontFamily: 'sans' | 'serif' | 'mono';
   customInstructions: string;
   defaultModel?: string;
+  /** When true, Gemini is asked to ground responses with web search. */
+  webSearchEnabled?: boolean;
 }
 
 export interface DeveloperStats {

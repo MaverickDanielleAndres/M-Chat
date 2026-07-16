@@ -126,11 +126,19 @@ export function useSupabaseAuth() {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
+    // The redirectTo MUST be registered in Supabase Auth → URL Configuration.
+    // Using `/#/chat` works with our hash-router; the access_token lands in
+    // the URL hash and `detectSessionInUrl: true` (set on the client) parses
+    // it before the app mounts.
     return supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/#/chat`,
-        queryParams: { access_type: 'offline', prompt: 'consent' },
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+        scopes: 'openid email profile',
       },
     });
   }, []);

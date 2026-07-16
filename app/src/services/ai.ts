@@ -1,38 +1,125 @@
 import { GoogleGenAI } from '@google/genai';
 import type { AIProvider, ChatMessage } from '@/types';
+import { supabase } from '@/lib/supabase';
+
+/**
+ * If VITE_GEMINI_PROXY_URL is set (e.g.
+ *   `${VITE_SUPABASE_URL}/functions/v1/gemini-proxy`),
+ * route AI calls through the Supabase Edge Function so the API key never
+ * ships to the browser. The proxy requires a JWT and applies rate-limiting.
+ *
+ * Falls back to direct-from-browser when the proxy URL isn't configured
+ * (development mode), preserving the current behavior.
+ */
+const PROXY_URL: string | undefined = (() => {
+  const v = import.meta.env.VITE_GEMINI_PROXY_URL;
+  return typeof v === 'string' && v.trim() ? v.trim() : undefined;
+})();
+
+interface ProxyRequest {
+  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  attachments?: Array<{ mimeType: string; data: string }>;
+  model?: string;
+  systemInstruction?: string;
+  stream?: boolean;
+}
+
+async function readProxyAccessToken(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Convert a File to base64 inlineData suitable for the proxy. */
+async function fileToInlineData(
+  file: File
+): Promise<{ mimeType: string; data: string }> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+  return { mimeType: file.type, data: dataUrl.split(',')[1] ?? '' };
+}
 
 export interface AIStreamChunk {
   content: string;
   done: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Key rotation — supports VITE_GEMINI_API_KEYS (comma-separated) with fallback
+// to VITE_GEMINI_API_KEY
+// ---------------------------------------------------------------------------
+function buildKeyPool(): string[] {
+  const multi = (import.meta.env.VITE_GEMINI_API_KEYS || '').trim();
+  const single = (import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+  const keys: string[] = [];
+  if (multi) {
+    for (const k of multi.split(',')) {
+      const t = k.trim();
+      if (isValidGeminiKey(t)) keys.push(t);
+    }
+  }
+  if (single && isValidGeminiKey(single) && !keys.includes(single)) {
+    keys.push(single);
+  }
+  return keys;
+}
+
 /**
- * Heuristic check: a real Google Gemini API key starts with `AIza` and is ~39
- * characters long. Anything else is almost certainly a placeholder / wrong env
- * value (e.g. `AQ.…` from Qwen) and will return 401 / RESOURCE_EXHAUSTED.
+ * Validate a Gemini API key.
+ * Accepts both the classic AIza… keys from Google AI Studio and
+ * the AQ.… keys used in this project's .env.local.
  */
 export function isValidGeminiKey(key: string | undefined | null): boolean {
   if (!key) return false;
   const trimmed = key.trim();
-  return trimmed.startsWith('AIza') && trimmed.length >= 30;
+  // Any key that is at least 20 characters and not an obvious placeholder
+  return trimmed.length >= 20 && !trimmed.includes('your-key') && !trimmed.includes('YOUR_');
 }
 
 // ---------------------------------------------------------------------------
-// file -> inline data helper
+// Resolve the model name — prefer GEMINI_MODEL env, fall back to 2.5-flash
 // ---------------------------------------------------------------------------
-async function fileToInlineData(
-  file: File
-): Promise<{ inlineData: { data: string; mimeType: string } }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const base64 = dataUrl.split(',')[1];
-      resolve({ inlineData: { data: base64, mimeType: file.type } });
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+function resolveModel(): string {
+  const envModel = (import.meta.env.VITE_GEMINI_MODEL || import.meta.env.GEMINI_MODEL || '').trim();
+  return envModel || 'gemini-2.5-flash';
+}
+
+// ---------------------------------------------------------------------------
+// Build rich system instruction
+// ---------------------------------------------------------------------------
+function buildSystemInstruction(customInstructions?: string): string {
+  const base = `You are M-Chat, a powerful AI assistant comparable to ChatGPT — helpful, concise, and versatile.
+
+Your capabilities include:
+- Deep reasoning and step-by-step problem solving
+- Code generation, review, debugging in 30+ languages with syntax-highlighted output
+- Document analysis: PDF, Word, Excel, CSV, JSON, XML, Markdown, HTML
+- Image analysis and description (when images are provided)
+- Data analysis and visualization recommendations
+- Creative writing: essays, stories, blog posts, marketing copy
+- Translation across 100+ languages
+- Math, science, and research assistance
+- Business planning, strategic recommendations
+- Answering questions with detailed, accurate explanations
+
+Formatting rules:
+- Use markdown formatting when it improves clarity (headers, lists, code blocks, tables)
+- For code, always use fenced code blocks with the language identifier
+- For math, use LaTeX notation when precision is needed
+- Be direct and concise; avoid unnecessary preamble
+- When uncertain, say so clearly rather than hallucinating facts`;
+
+  if (customInstructions && customInstructions.trim()) {
+    return `${base}\n\n## User's Custom Instructions\n${customInstructions.trim()}`;
+  }
+  return base;
 }
 
 // ---------------------------------------------------------------------------
@@ -41,18 +128,71 @@ async function fileToInlineData(
 class GeminiProvider implements AIProvider {
   id = 'gemini';
   name = 'Gemini AI';
-  model = 'gemini-2.0-flash';
+  model: string;
 
   private ai: GoogleGenAI;
+  private customInstructions?: string;
+  /** Per-conversation persona system prompt (overrides the base instruction). */
+  private personaPrompt?: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, customInstructions?: string, personaPrompt?: string) {
     this.ai = new GoogleGenAI({ apiKey });
+    this.model = resolveModel();
+    this.customInstructions = customInstructions;
+    this.personaPrompt = personaPrompt;
   }
 
   async sendMessage(
     messages: ChatMessage[],
     attachments?: File[]
   ): Promise<ReadableStream<Uint8Array>> {
+    // ----- Proxy path: server-side Gemini key ---------------------------
+    if (PROXY_URL) {
+      const proxyAttachments = attachments?.length
+        ? await Promise.all(
+            attachments.map((f) => fileToInlineData(f).catch(() => null))
+          ).then((arr) => arr.filter(Boolean) as Array<{ mimeType: string; data: string }>)
+        : undefined;
+
+      const payload: ProxyRequest = {
+        messages: messages.map((m) => ({
+          role: m.role === 'system' ? 'system' : (m.role as 'user' | 'assistant'),
+          content: m.content,
+        })),
+        attachments: proxyAttachments,
+        model: this.model,
+        systemInstruction:
+          this.personaPrompt && this.personaPrompt.trim()
+            ? this.personaPrompt
+            : buildSystemInstruction(this.customInstructions),
+        stream: true,
+      };
+
+      const token = await readProxyAccessToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const upstream = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      if (!upstream.ok || !upstream.body) {
+        const errText = await upstream.text().catch(() => '');
+        throw new AIProviderError(
+          `Gemini proxy error: ${upstream.status} ${errText.slice(0, 200)}`,
+          upstream.status
+        );
+      }
+
+      // The proxy streams raw SSE that already matches the OpenAI-style
+      // `choices[0].delta.content` shape we parse downstream, so just pass
+      // it through.
+      return upstream.body;
+    }
+
+    // ----- Direct-from-browser path ------------------------------------
     const encoder = new TextEncoder();
 
     const history = messages.slice(0, -1).map((m) => ({
@@ -68,7 +208,8 @@ class GeminiProvider implements AIProvider {
     if (attachments && attachments.length > 0) {
       for (const file of attachments) {
         try {
-          userParts.push(await fileToInlineData(file));
+          const data = await fileToInlineData(file);
+          userParts.push({ inlineData: data });
         } catch {
           /* skip files that can't be read */
         }
@@ -79,9 +220,16 @@ class GeminiProvider implements AIProvider {
       model: this.model,
       history,
       config: {
+        // Persona prompt wins over the base instruction when present, so
+        // selecting "Senior Developer" actually produces developer-style
+        // responses instead of the default assistant voice.
         systemInstruction:
-          'You are M-Chat, a helpful, concise, and friendly AI assistant. Format responses using markdown when helpful. Be clear and direct.',
+          (this.personaPrompt && this.personaPrompt.trim()
+            ? this.personaPrompt
+            : buildSystemInstruction(this.customInstructions)),
         maxOutputTokens: 8192,
+        temperature: 0.7,
+        topP: 0.95,
       },
     });
 
@@ -133,10 +281,10 @@ class GeminiProvider implements AIProvider {
 // ---------------------------------------------------------------------------
 // Provider factory
 // ---------------------------------------------------------------------------
-export function createAIProvider(providerId: string, apiKey: string): AIProvider {
+export function createAIProvider(providerId: string, apiKey: string, customInstructions?: string, personaPrompt?: string): AIProvider {
   switch (providerId) {
     case 'gemini':
-      return new GeminiProvider(apiKey);
+      return new GeminiProvider(apiKey, customInstructions, personaPrompt);
     default:
       throw new Error(`Unknown AI provider: ${providerId}`);
   }
@@ -187,8 +335,7 @@ export async function* parseSSEStream(
 
 /**
  * Custom error class that signals when the upstream provider rejected the
- * request (invalid key, quota exceeded, rate limited, etc.). The store
- * catches this to surface a friendly toast and switch to demo mode.
+ * request (invalid key, quota exceeded, rate limited, etc.).
  */
 export class AIProviderError extends Error {
   status?: number;
@@ -200,9 +347,7 @@ export class AIProviderError extends Error {
 }
 
 /**
- * Inspect an error caught from the Gemini provider and decide whether it's a
- * recoverable upstream error (key invalid / quota / rate limit). Returns a
- * normalized `AIProviderError` we can show to the user.
+ * Classify an upstream AI error.
  */
 export function classifyAIError(err: unknown): AIProviderError {
   const raw = err instanceof Error ? err.message : String(err);
@@ -216,19 +361,19 @@ export function classifyAIError(err: unknown): AIProviderError {
     lower.includes('resource_exhausted')
   ) {
     return new AIProviderError(
-      'Gemini API quota exceeded. Falling back to demo mode — set a valid VITE_GEMINI_API_KEY in .env to enable real AI.',
+      'Gemini API quota exceeded. Rotating to next key or falling back to demo mode.',
       429
     );
   }
   if (status === 401 || status === 403 || lower.includes('api key')) {
     return new AIProviderError(
-      'Gemini API key is invalid. Falling back to demo mode — check VITE_GEMINI_API_KEY in .env.',
+      'Gemini API key is invalid. Check VITE_GEMINI_API_KEY in .env.',
       status ?? 401
     );
   }
   if (status && status >= 500) {
     return new AIProviderError(
-      'Gemini service is unavailable right now. Falling back to demo mode.',
+      'Gemini service is temporarily unavailable. Falling back to demo mode.',
       status
     );
   }
@@ -245,15 +390,6 @@ export interface DemoStreamOptions {
   userPrompt?: string;
 }
 
-/**
- * Generates a helpful demo / fallback stream used when:
- *   - no API key is configured
- *   - the configured key is malformed (not a real Gemini key)
- *   - the upstream provider rejected the request (quota / 401 / 5xx)
- *
- * The response is still useful: it acknowledges the user's prompt, points
- * them at the configuration step, and offers to keep going.
- */
 export function createDemoStream(opts: DemoStreamOptions | string = {}): ReadableStream<Uint8Array> {
   const options: DemoStreamOptions = typeof opts === 'string' ? { userPrompt: opts } : opts;
   const userPrompt = options.userPrompt?.trim() || 'your message';
@@ -266,15 +402,15 @@ export function createDemoStream(opts: DemoStreamOptions | string = {}): Readabl
       `> ${reason}\n\n` +
       `### How to enable the real AI\n\n` +
       `1. Get a free API key from [Google AI Studio](https://aistudio.google.com/app/apikey).\n` +
-      `2. Open \`.env\` and set:\n` +
+      `2. Open \`.env.local\` and set:\n` +
       `   \`\`\`\n   VITE_GEMINI_API_KEY=your-key-here\n   \`\`\`\n` +
       `3. Restart the dev server (\`npm run dev\`).\n\n` +
-      `Once a valid key is configured, the Gemini 2.0 Flash model will answer here in full.`;
+      `Once a valid key is configured, the Gemini 2.5 Flash model will answer here in full.`;
   } else {
     response =
-      `Hello! I'm **M-Chat**, your AI assistant powered by **Gemini AI**.\n\nIt looks like you haven't configured an API key yet. To use the full AI capabilities:\n\n` +
+      `Hello! I'm **M-Chat**, your AI assistant powered by **Gemini 2.5 Flash**.\n\nIt looks like you haven't configured an API key yet. To use the full AI capabilities:\n\n` +
       `1. Get your free API key from [Google AI Studio](https://aistudio.google.com/app/apikey).\n` +
-      `2. Open your \`.env\` file and set:\n   \`\`\`\n   VITE_GEMINI_API_KEY=your-key-here\n   \`\`\`\n` +
+      `2. Open your \`.env.local\` file and set:\n   \`\`\`\n   VITE_GEMINI_API_KEY=your-key-here\n   \`\`\`\n` +
       `3. Restart the dev server.\n\nIn the meantime, I'm running in **demo mode**. How can I help you today?`;
   }
 
@@ -303,14 +439,7 @@ export function createDemoStream(opts: DemoStreamOptions | string = {}): Readabl
 }
 
 // ---------------------------------------------------------------------------
-// Send a single message with automatic fallback. This is the high-level entry
-// point the store should use — it handles:
-//   - detecting malformed keys and skipping Gemini entirely
-//   - catching upstream errors (quota / 401 / 5xx) and falling back to demo
-//   - normalising thrown errors into AIProviderError
-//
-// Returns the raw stream AND a `usedFallback` flag plus the reason, so the
-// UI can show a non-blocking toast.
+// Send a single message with automatic fallback + key rotation
 // ---------------------------------------------------------------------------
 export interface SendMessageResult {
   stream: ReadableStream<Uint8Array>;
@@ -321,26 +450,37 @@ export interface SendMessageResult {
 export async function sendMessageWithFallback(
   messages: ChatMessage[],
   attachments: File[] | undefined,
-  userPrompt: string
+  userPrompt: string,
+  customInstructions?: string,
+  personaPrompt?: string
 ): Promise<SendMessageResult> {
-  const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || '').trim();
-  if (!isValidGeminiKey(apiKey)) {
+  // Try each key in the pool
+  const pool = buildKeyPool();
+  if (pool.length === 0) {
     return {
-      stream: createDemoStream({ reason: 'No valid Gemini API key configured.', userPrompt }),
+      stream: createDemoStream({ reason: 'No Gemini API key configured. Add VITE_GEMINI_API_KEY to .env.local', userPrompt }),
       usedFallback: true,
       fallbackReason: 'No valid Gemini API key configured',
     };
   }
-  try {
-    const provider = createAIProvider('gemini', apiKey);
-    const stream = await provider.sendMessage(messages, attachments);
-    return { stream, usedFallback: false };
-  } catch (err) {
-    const classified = classifyAIError(err);
-    return {
-      stream: createDemoStream({ reason: classified.message, userPrompt }),
-      usedFallback: true,
-      fallbackReason: classified.message,
-    };
+
+  let lastError: AIProviderError | null = null;
+  for (const key of pool) {
+    try {
+      const provider = createAIProvider('gemini', key, customInstructions, personaPrompt);
+      const stream = await provider.sendMessage(messages, attachments);
+      return { stream, usedFallback: false };
+    } catch (err) {
+      const classified = classifyAIError(err);
+      lastError = classified;
+      // On quota/rate-limit errors, try next key. On auth errors, break.
+      if (classified.status === 401 || classified.status === 403) break;
+    }
   }
+
+  return {
+    stream: createDemoStream({ reason: lastError?.message, userPrompt }),
+    usedFallback: true,
+    fallbackReason: lastError?.message,
+  };
 }

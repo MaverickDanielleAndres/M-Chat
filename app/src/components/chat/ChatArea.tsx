@@ -101,6 +101,7 @@ export function ChatArea() {
 
   const unlimited = wallet.daily_quota === -1;
 
+
   return (
     <div className="flex flex-col h-full relative bg-background">
       {/* Header — overflow-safe on small screens. Persona/Export/Share hide
@@ -147,6 +148,7 @@ export function ChatArea() {
           >
             <Share2 size={15} />
           </button>
+
           <div
             className={cn(
               'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium ml-1 flex-shrink-0',

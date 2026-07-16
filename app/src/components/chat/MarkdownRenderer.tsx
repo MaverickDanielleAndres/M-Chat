@@ -18,6 +18,7 @@ import { Copy, Check, Download } from 'lucide-react';
 import { useState } from 'react';
 import { cn, copyToClipboard, downloadFile } from '@/lib/utils';
 import { useStore } from '@/store/useStore';
+import { IconButton } from '@/components/ui/IconButton';
 
 SyntaxHighlighter.registerLanguage('tsx', tsx);
 SyntaxHighlighter.registerLanguage('typescript', typescript);
@@ -67,20 +68,24 @@ function CodeBlock({ language, code, isDark }: CodeBlockProps) {
           {language || 'text'}
         </span>
         <div className="flex items-center gap-1">
-          <button
+          <IconButton
+            size="xs"
+            variant="ghost"
             onClick={handleCopy}
-            className="p-1.5 rounded-md hover:bg-[var(--m-bg-surface)] text-[var(--m-text-secondary)] transition-colors"
             aria-label="Copy code"
+            className="hover:bg-[var(--m-bg-surface)] text-[var(--m-text-secondary)]"
           >
             {copied ? <Check size={14} strokeWidth={1.5} /> : <Copy size={14} strokeWidth={1.5} />}
-          </button>
-          <button
+          </IconButton>
+          <IconButton
+            size="xs"
+            variant="ghost"
             onClick={handleDownload}
-            className="p-1.5 rounded-md hover:bg-[var(--m-bg-surface)] text-[var(--m-text-secondary)] transition-colors"
             aria-label="Download code"
+            className="hover:bg-[var(--m-bg-surface)] text-[var(--m-text-secondary)]"
           >
             <Download size={14} strokeWidth={1.5} />
-          </button>
+          </IconButton>
         </div>
       </div>
       {/* Code */}

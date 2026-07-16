@@ -20,7 +20,7 @@ export function CTA() {
           className="relative rounded-3xl overflow-hidden"
         >
           {/* Gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#0e0e1a] via-[#0f0f18] to-[#0a0a14]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background dark:from-[#0e0e1a] dark:via-[#0f0f18] dark:to-[#0a0a14]" />
           <div className="absolute inset-0 bg-gradient-to-br from-[var(--m-accent-blue)]/10 via-transparent to-[#a78bfa]/8" />
 
           {/* Ambient orbs inside card */}

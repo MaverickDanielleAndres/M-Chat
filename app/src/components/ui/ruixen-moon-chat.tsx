@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,9 @@ import {
   Palette,
   Layers,
   Rocket,
+  Sparkles,
+  Languages,
+  Brain,
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 
@@ -55,21 +59,43 @@ const QUICK_ACTIONS = [
   { icon: Palette, label: 'Theme Ideas', prompt: 'Suggest 3 distinct color palettes for a calm productivity app.' },
   { icon: CircleUserRound, label: 'User Dashboard', prompt: 'Sketch the sections of a user dashboard for a SaaS product.' },
   { icon: MonitorIcon, label: 'Landing Page', prompt: 'Outline a landing page for an AI-powered writing tool.' },
-  { icon: FileUp, label: 'Upload Docs', prompt: 'I will upload a document. Summarize the key takeaways.' },
+  { icon: FileUp, label: 'Upload Docs', prompt: 'I will upload a document next. Summarize its key takeaways in 5 bullets.' },
   { icon: ImageIcon, label: 'Image Assets', prompt: 'Describe 5 hero-image concepts for a finance app.' },
+  { icon: Sparkles, label: 'Generate Image', prompt: 'Generate an image of a futuristic green-energy city at golden hour.' },
+  { icon: Languages, label: 'Translate', prompt: 'Translate this to Spanish, French, and Japanese: "Welcome to M-Chat."' },
+  { icon: Brain, label: 'Reasoning', prompt: 'Solve step by step: A train leaves A at 9am at 60 km/h. Another leaves B (300 km away) at 10am toward A at 90 km/h. When do they meet?' },
+  { icon: Code2, label: 'Debug', prompt: 'Help me debug this error: TypeError: Cannot read properties of undefined (reading "map") at UserList (UserList.tsx:12).' },
 ] as const;
 
 export default function RuixenMoonChat() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [message, setMessage] = useState('');
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 48,
     maxHeight: 150,
   });
 
+  // Read prompt from URL
+  useEffect(() => {
+    const prompt = searchParams.get('prompt');
+    if (prompt) {
+      setMessage(prompt);
+      const next = new URLSearchParams(searchParams);
+      next.delete('prompt');
+      setSearchParams(next, { replace: true });
+      
+      setTimeout(() => {
+        adjustHeight();
+        textareaRef.current?.focus();
+      }, 100);
+    }
+  }, [searchParams, setSearchParams, adjustHeight]);
+
   const sendMessage = useStore((s) => s.sendMessage);
   const isGenerating = useStore((s) => s.isGenerating);
   const wallet = useStore((s) => s.wallet);
   const addToast = useStore((s) => s.addToast);
+  const isAuthed = useIsAuthed();
 
   const dailyQuota = wallet.daily_quota;
   const unlimited = dailyQuota === -1;
@@ -98,7 +124,10 @@ export default function RuixenMoonChat() {
   };
 
   const handleAttach = () => {
-    addToast({ type: 'info', message: 'Use the chat input below to attach files' });
+    // Dispatch a global event that ChatInput listens for. This lets the
+    // EmptyState's "attach" button reuse the same hidden <input type="file">
+    // pipeline as the main composer, instead of being a placeholder toast.
+    window.dispatchEvent(new CustomEvent('mchat:open-attachments'));
   };
 
   return (
@@ -116,7 +145,7 @@ export default function RuixenMoonChat() {
         <p className="mt-1.5 text-sm sm:text-base text-muted-foreground max-w-md">
           Build something amazing — just start typing below.
         </p>
-        {!isAuthedOrLoading() && !unlimited && wallet.daily_quota > 0 && (
+        {!isAuthed && !unlimited && wallet.daily_quota > 0 && (
           <p className="mt-2 text-[11px] text-muted-foreground">
             {wallet.daily_used}/{wallet.daily_quota} daily prompts · {wallet.balance} credits
           </p>
@@ -219,7 +248,7 @@ function QuickAction({ icon, label, onClick }: QuickActionProps) {
   );
 }
 
-// kept lightweight — we don't actually need auth state here
-function isAuthedOrLoading() {
-  return false;
-}
+// We do need auth state here so the quota badge and the "upgrade" CTA
+// hide for signed-in paid users. Reading from the same Zustand store the
+// rest of the app uses.
+const useIsAuthed = () => useStore((s) => s.isAuthed);

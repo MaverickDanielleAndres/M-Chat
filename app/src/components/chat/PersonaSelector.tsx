@@ -78,12 +78,10 @@ export function PersonaSelector() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1.5 rounded-lg border border-border/60 bg-background/50 hover:bg-muted text-[11px] font-medium transition-colors flex-shrink-0"
-        aria-label={`Persona: ${currentPersona.name}`}
-        title={currentPersona.name}
+        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-border/60 bg-background/50 hover:bg-muted text-[11px] font-medium transition-colors"
       >
         <Icon size={12} className={currentPersona.color} />
-        <span className="text-foreground/80 hidden sm:inline">{currentPersona.name}</span>
+        <span className="text-foreground/80">{currentPersona.name}</span>
         <ChevronDown size={12} className="text-muted-foreground ml-0.5" />
       </button>
 
