@@ -235,7 +235,7 @@ export function Sidebar() {
           </button>
           <button
             onClick={toggleSidebar}
-            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors flex-shrink-0"
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-colors flex-shrink-0"
             aria-label="Close sidebar"
             title="Close sidebar"
           >
@@ -648,7 +648,7 @@ function ConvItem({
             onToggleMenu(conv.id);
           }}
           className={cn(
-            'p-1 rounded-md transition-colors flex-shrink-0',
+            'w-7 h-7 rounded-md transition-colors flex-shrink-0 flex items-center justify-center',
             menuOpen
               ? 'bg-muted text-foreground'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'

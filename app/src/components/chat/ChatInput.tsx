@@ -288,7 +288,7 @@ export function ChatInput() {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isGenerating || atLimit || isGeneratingImage}
-          className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 flex-shrink-0"
+          className="w-9 h-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 flex-shrink-0"
           title="Attach file (image, PDF, code, etc.)"
         >
           <Paperclip size={17} strokeWidth={1.5} />
@@ -338,7 +338,7 @@ export function ChatInput() {
         <button
           type="button"
           disabled
-          className="p-2 rounded-xl text-muted-foreground/40 flex-shrink-0 hidden sm:inline-flex cursor-default"
+          className="w-9 h-9 flex items-center justify-center rounded-xl text-muted-foreground/40 flex-shrink-0 hidden sm:flex cursor-default"
           title="Web search is built-in via Gemini grounding"
         >
           <Globe size={15} strokeWidth={1.5} />
@@ -350,7 +350,7 @@ export function ChatInput() {
             onClick={toggleVoice}
             disabled={isGenerating || atLimit || isGeneratingImage}
             className={cn(
-              'p-2 rounded-xl transition-colors flex-shrink-0 hidden sm:inline-flex',
+              'w-9 h-9 flex items-center justify-center rounded-xl transition-colors flex-shrink-0 hidden sm:flex',
               isListening
                 ? 'text-red-400 bg-red-500/15 hover:bg-red-500/25 animate-pulse'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30'
@@ -363,7 +363,7 @@ export function ChatInput() {
 
         {/* Image generation loading */}
         {isGeneratingImage && (
-          <div className="p-2.5 rounded-xl flex-shrink-0">
+          <div className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0">
             <Loader2 size={15} className="text-indigo-400 animate-spin" strokeWidth={1.5} />
           </div>
         )}
@@ -372,7 +372,7 @@ export function ChatInput() {
         {isGenerating ? (
           <button
             onClick={stopGeneration}
-            className="p-2.5 rounded-xl bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors flex-shrink-0"
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors flex-shrink-0"
             title="Stop generating"
           >
             <Square size={15} strokeWidth={1.5} />
@@ -383,7 +383,7 @@ export function ChatInput() {
               onClick={handleSend}
               disabled={!input.trim() || atLimit}
               className={cn(
-                'p-2.5 rounded-xl flex-shrink-0 transition-all',
+                'w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 transition-all',
                 input.trim() && !atLimit
                   ? detectImageGenerationIntent(input)
                     ? 'bg-gradient-to-br from-violet-500 to-pink-600 text-white hover:opacity-90 shadow-sm shadow-violet-500/20'

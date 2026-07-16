@@ -187,7 +187,7 @@ function ActionBtn({
       onClick={onClick}
       aria-label={label}
       className={cn(
-        'p-1.5 rounded-lg transition-colors',
+        'w-7 h-7 flex items-center justify-center rounded-lg transition-colors',
         active
           ? activeClass
           : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
