@@ -22,10 +22,9 @@ import { NotificationsPanel } from '@/components/ui/NotificationsPanel';
 import { PersonaSelector } from './PersonaSelector';
 
 export function ChatArea() {
-  // Use shallow selectors so this component only re-renders when its slice
-  // actually changes. Calling `useStore()` with a destructure re-renders on
-  // *every* store mutation, including high-frequency AI-stream updates that
-  // don't touch this surface.
+  // Selector-based store reads so this component only re-renders when its
+  // slice changes — high-frequency AI-stream updates otherwise cascade
+  // re-renders through every ChatArea subscriber.
   const aiStatus = useStore((s) => s.aiStatus);
   const isGenerating = useStore((s) => s.isGenerating);
   const wallet = useStore((s) => s.wallet);
@@ -36,23 +35,26 @@ export function ChatArea() {
   );
   const messages = conversation?.messages ?? [];
   const hasMessages = messages.length > 0;
-  // Use DB-authoritative count when available (synced convs), otherwise fall
-  // back to the local message array. This avoids showing e.g. "2 messages"
-  // for a brand-new chat while the assistant placeholder is mid-stream.
-  const messageCount = conversation?.synced && conversation.messageCount != null
-    ? conversation.messageCount
-    : messages.length;
+  // DB-authoritative count when available (synced convs), otherwise fall back
+  // to the local message array. Avoids the "2 messages" header bug on a
+  // brand-new chat while the assistant placeholder is mid-stream.
+  const messageCount =
+    conversation?.synced && conversation.messageCount != null
+      ? conversation.messageCount
+      : messages.length;
 
-  const { containerRef, isAtBottom, handleScroll, scrollToBottom } = useAutoScroll([
-    messages.length,
-    messages[messages.length - 1]?.content,
-  ]);
+  const { containerRef, isAtBottom, handleScroll, scrollToBottom } =
+    useAutoScroll([
+      messages.length,
+      messages[messages.length - 1]?.content,
+    ]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        const searchInput = document.querySelector<HTMLInputElement>('[data-search-input]');
+        const searchInput =
+          document.querySelector<HTMLInputElement>('[data-search-input]');
         searchInput?.focus();
       }
     };
@@ -60,12 +62,40 @@ export function ChatArea() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const statusConfig: Record<string, { color: string; bg: string; icon: any; label: string }> = {
-    online: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: Wifi, label: 'Online' },
-    thinking: { color: 'text-amber-400', bg: 'bg-amber-500/10', icon: Activity, label: 'Thinking' },
-    generating: { color: 'text-indigo-400', bg: 'bg-indigo-500/10', icon: Zap, label: 'Generating' },
-    error: { color: 'text-red-400', bg: 'bg-red-500/10', icon: AlertCircle, label: 'Error' },
-    offline: { color: 'text-muted-foreground', bg: 'bg-muted/40', icon: WifiOff, label: 'Offline' },
+  const statusConfig: Record<
+    string,
+    { color: string; bg: string; icon: any; label: string }
+  > = {
+    online: {
+      color: 'text-emerald-400',
+      bg: 'bg-emerald-500/10',
+      icon: Wifi,
+      label: 'Online',
+    },
+    thinking: {
+      color: 'text-amber-400',
+      bg: 'bg-amber-500/10',
+      icon: Activity,
+      label: 'Thinking',
+    },
+    generating: {
+      color: 'text-indigo-400',
+      bg: 'bg-indigo-500/10',
+      icon: Zap,
+      label: 'Generating',
+    },
+    error: {
+      color: 'text-red-400',
+      bg: 'bg-red-500/10',
+      icon: AlertCircle,
+      label: 'Error',
+    },
+    offline: {
+      color: 'text-muted-foreground',
+      bg: 'bg-muted/40',
+      icon: WifiOff,
+      label: 'Offline',
+    },
   };
   const s = statusConfig[aiStatus] || statusConfig.offline;
   const StatusIcon = s.icon;
@@ -91,7 +121,9 @@ export function ChatArea() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${(conversation.title || 'conversation').replace(/\s+/g, '-').toLowerCase()}.md`;
+    a.download = `${(conversation.title || 'conversation')
+      .replace(/\s+/g, '-')
+      .toLowerCase()}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -100,7 +132,6 @@ export function ChatArea() {
   };
 
   const unlimited = wallet.daily_quota === -1;
-
 
   return (
     <div className="flex flex-col h-full relative bg-background">
@@ -123,7 +154,9 @@ export function ChatArea() {
             </h2>
             <p className="text-[10px] text-muted-foreground hidden sm:block truncate">
               {messageCount} {messageCount === 1 ? 'message' : 'messages'}
-              {!unlimited && wallet.daily_quota > 0 && ` · ${wallet.daily_used}/${wallet.daily_quota} prompts today`}
+              {!unlimited &&
+                wallet.daily_quota > 0 &&
+                ` · ${wallet.daily_used}/${wallet.daily_quota} prompts today`}
             </p>
           </div>
         </div>
@@ -148,7 +181,6 @@ export function ChatArea() {
           >
             <Share2 size={15} />
           </button>
-
           <div
             className={cn(
               'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium ml-1 flex-shrink-0',
@@ -159,7 +191,10 @@ export function ChatArea() {
           >
             <StatusIcon
               size={10}
-              className={cn(aiStatus === 'thinking' && 'status-thinking', aiStatus === 'generating' && 'animate-pulse')}
+              className={cn(
+                aiStatus === 'thinking' && 'status-thinking',
+                aiStatus === 'generating' && 'animate-pulse'
+              )}
             />
             <span className="hidden sm:inline">{s.label}</span>
           </div>
@@ -167,7 +202,11 @@ export function ChatArea() {
       </header>
 
       {/* Messages */}
-      <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto"
+      >
         {hasMessages ? (
           <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4">
             <AnimatePresence initial={false}>

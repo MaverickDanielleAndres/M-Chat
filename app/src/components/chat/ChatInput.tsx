@@ -30,8 +30,7 @@ export function ChatInput() {
     settings,
     updateSettings,
     addToast,
-  } = useStore();
-  const [input, setInput] = useState('');
+  } = useStore();  const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -61,15 +60,13 @@ export function ChatInput() {
 
   // Read prompt from URL (?prompt=...) so capability cards on the
   // landing page can deep-link into the chat with a starter prompt.
-  const [searchParams, setSearchParams] = useSearchParams();
-  useEffect(() => {
+  const [searchParams, setSearchParams] = useSearchParams();  useEffect(() => {
     const prompt = searchParams.get('prompt');
     if (prompt) {
       setInput(prompt);
       const next = new URLSearchParams(searchParams);
       next.delete('prompt');
       setSearchParams(next, { replace: true });
-
       setTimeout(() => {
         textareaRef.current?.focus();
       }, 100);
@@ -206,8 +203,7 @@ export function ChatInput() {
   const displayValue = input + (interimTranscript ? ` ${interimTranscript}` : '');
 
   return (
-    <div ref={dropZoneRef} className="w-full max-w-3xl mx-auto px-3 sm:px-4 pb-3 pt-2 safe-area-pb">
-      {/* Generated Images Preview */}
+    <div ref={dropZoneRef} className="w-full max-w-3xl mx-auto px-3 sm:px-4 pb-3 pt-2 safe-area-pb">      {/* Generated Images Preview */}
       <AnimatePresence>
         {generatedImages.length > 0 && (
           <motion.div
@@ -310,8 +306,7 @@ export function ChatInput() {
           disabled={isGenerating || atLimit || isGeneratingImage}
           className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 flex-shrink-0"
           title="Attach file (image, PDF, code, etc.)"
-          aria-label="Attach file"
-        >
+          aria-label="Attach file"        >
           <Paperclip size={17} strokeWidth={1.5} />
         </button>
         <input
@@ -437,8 +432,7 @@ export function ChatInput() {
           Up to {Math.round(MAX_FILE_BYTES / (1024 * 1024))}MB
         </span>
         <span className="text-[10px] text-muted-foreground hidden sm:inline">·</span>
-        <span className="text-[10px] text-muted-foreground hidden sm:inline">Gemini 2.5 Flash</span>
-        {settings.showTokenCounts && (
+        <span className="text-[10px] text-muted-foreground hidden sm:inline">Gemini 2.5 Flash</span>        {settings.showTokenCounts && (
           <>
             <span className="text-[10px] text-muted-foreground hidden sm:inline">·</span>
             <span className="text-[10px] text-muted-foreground font-mono hidden sm:inline">
@@ -449,8 +443,7 @@ export function ChatInput() {
         {!unlimited && wallet.daily_quota > 0 && (
           <>
             <span className="text-[10px] text-muted-foreground">·</span>
-            <span className={cn('text-[10px] font-mono whitespace-nowrap', atLimit ? 'text-red-400' : 'text-muted-foreground')}>
-              {wallet.daily_used}/{wallet.daily_quota} today
+            <span className={cn('text-[10px] font-mono whitespace-nowrap', atLimit ? 'text-red-400' : 'text-muted-foreground')}>              {wallet.daily_used}/{wallet.daily_quota} today
             </span>
           </>
         )}
