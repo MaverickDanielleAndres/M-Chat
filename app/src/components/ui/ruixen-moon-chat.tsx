@@ -102,7 +102,7 @@ export default function RuixenMoonChat() {
   };
 
   return (
-    <div className="relative w-full flex flex-col items-center justify-center px-3 sm:px-6 py-6 sm:py-10 mesh-gradient">
+    <div className="relative w-full h-full min-h-[60vh] flex flex-col items-center justify-center px-3 sm:px-6 py-6 sm:py-10 mesh-gradient">
       {/* Centered AI Title */}
       <div className="w-full flex flex-col items-center justify-center text-center mb-6 sm:mb-8">
         <img
@@ -185,7 +185,7 @@ export default function RuixenMoonChat() {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex items-center justify-center flex-wrap gap-2 mt-5">
+        <div className="flex items-center justify-center flex-wrap gap-1.5 sm:gap-2 mt-5 max-w-3xl mx-auto">
           {QUICK_ACTIONS.map(({ icon: Icon, label, prompt }) => (
             <QuickAction
               key={label}

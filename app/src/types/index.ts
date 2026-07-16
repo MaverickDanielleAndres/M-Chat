@@ -29,8 +29,11 @@ export interface Conversation {
   updatedAt: number;
   pinned?: boolean;
   model?: string;
+  system_prompt?: string;
   userId?: string | null;
   synced?: boolean;
+  /** DB-authoritative message count (denormalized on the conversation row). */
+  messageCount?: number;
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';

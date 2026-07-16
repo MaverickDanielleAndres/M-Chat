@@ -65,7 +65,7 @@ export function DocsPage() {
             {[
               ['Frontend', 'React 19 + TypeScript + Vite + Tailwind + shadcn/ui'],
               ['Backend', 'Supabase (PostgreSQL, Auth, Storage, Realtime)'],
-              ['AI', 'Qwen API (model-agnostic)'],
+              ['AI', 'Gemini API (model-agnostic)'],
               ['State', 'Zustand + Supabase Realtime'],
             ].map(([k, v]) => (
               <div key={k} className="p-3 rounded-xl border border-white/[0.04] bg-[var(--m-bg-card)]/30">
@@ -91,7 +91,7 @@ export function DocsPage() {
         <Section icon={Shield} title="Environment Variables">
           <CopyBlock text={`VITE_SUPABASE_URL=https://mtcugjtuiuxjgoyvzzvf.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_QWEN_API_KEY=your-qwen-key`} />
+VITE_GEMINI_API_KEY=your-gemini-key`} />
         </Section>
 
         <Section icon={Server} title="Setup">
@@ -118,8 +118,8 @@ npm run dev`} />
   model: string;
   sendMessage(messages: ChatMessage[]): Promise<ReadableStream>;
 }
-// Active: Qwen
-// Future: OpenAI, Claude, Gemini, DeepSeek`} />
+// Active: Gemini
+// Future: OpenAI, Claude, GPT-4, DeepSeek`} />
         </Section>
 
         <Section icon={Globe} title="Deployment">

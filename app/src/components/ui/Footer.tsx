@@ -12,13 +12,13 @@ export function Footer() {
   if (atLimit && (tier === 'free' || tier === 'registered')) {
     return (
       <footer className="flex-shrink-0 border-t border-border/60 bg-card/80 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <p className="text-[12px] text-muted-foreground">
+        <div className="max-w-3xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 text-center sm:text-left">
+          <p className="text-[11px] sm:text-[12px] text-muted-foreground">
             You&apos;ve used your free prompts for today.
           </p>
           <button
-            onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90 transition-opacity"
+            onClick={() => navigate('/upgrade')}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-90 transition-opacity whitespace-nowrap"
           >
             Upgrade <ArrowRight size={10} strokeWidth={2} />
           </button>
@@ -30,25 +30,34 @@ export function Footer() {
   if (!isAuthed) {
     return (
       <footer className="flex-shrink-0 py-2 border-t border-border/60 bg-background">
-        <p className="text-center text-[10px] text-muted-foreground">
+        <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground">
           <button onClick={() => navigate('/signup')} className="hover:text-foreground transition-colors">
             Sign up
           </button>
-          {' · '}
+          <span className="text-border">·</span>
           <button onClick={() => navigate('/login')} className="hover:text-foreground transition-colors">
             Log in
           </button>
-          {' · '}Built with Qwen AI
-        </p>
+          <img
+            src="/logonobg.png"
+            alt="M-Chat"
+            className="w-4 h-4 opacity-70"
+          />
+        </div>
       </footer>
     );
   }
 
   return (
     <footer className="flex-shrink-0 py-2 border-t border-border/60 bg-background">
-      <p className="text-center text-[10px] text-muted-foreground">
-        M-Chat v1.0 · Built with Qwen AI
-      </p>
+      <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+        <span>M-Chat v1.0</span>
+        <img
+          src="/logonobg.png"
+          alt="M-Chat"
+          className="w-4 h-4 opacity-70"
+        />
+      </div>
     </footer>
   );
 }

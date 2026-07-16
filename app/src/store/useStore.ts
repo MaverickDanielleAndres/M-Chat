@@ -116,6 +116,7 @@ interface StoreState {
   setActiveConversation: (id: string) => void;
   deleteConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, title: string) => Promise<void>;
+  updateConversation: (id: string, updates: Partial<Conversation>) => Promise<void>;
   pinConversation: (id: string) => Promise<void>;
   duplicateConversation: (id: string) => Promise<void>;
   clearAllConversations: () => Promise<void>;
@@ -349,6 +350,21 @@ export const useStore = create<StoreState>()(
             await dbUpdateConversation(id, { title });
           } catch (err) {
             console.warn('[M-Chat] renameConversation sync failed', err);
+          }
+        }
+      },
+
+      updateConversation: async (id, updates) => {
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === id ? { ...c, ...updates } : c
+          ),
+        }));
+        if (isSupabaseConfigured && get().userId) {
+          try {
+            await dbUpdateConversation(id, updates as any);
+          } catch (err) {
+            console.warn('[M-Chat] updateConversation sync failed', err);
           }
         }
       },

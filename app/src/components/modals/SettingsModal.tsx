@@ -285,7 +285,10 @@ function GeneralTab({
         <p className="text-[13px] text-muted-foreground">
           M-Chat is a multi-modal AI workspace. Chat, generate, and analyze — all in one place.
         </p>
-        <p className="text-[11px] text-muted-foreground mt-1.5">Version 1.0 · Built with Qwen AI</p>
+        <div className="flex items-center gap-2 mt-1.5">
+          <p className="text-[11px] text-muted-foreground">Version 1.0</p>
+          <img src="/logonobg.png" alt="M-Chat" className="w-3.5 h-3.5 opacity-70" />
+        </div>
       </Section>
 
       <Section title="Keyboard shortcuts">

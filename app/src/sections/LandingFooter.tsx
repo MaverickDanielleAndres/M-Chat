@@ -134,13 +134,15 @@ export function LandingFooter() {
           </div>
 
           {/* Copyright */}
-          <div className="flex flex-col md:items-end gap-1">
+          <div className="flex flex-col md:items-end gap-1 items-center">
             <p className="text-center md:text-left">
               &copy; {new Date().getFullYear()} M-Chat. All rights reserved.
             </p>
-            <p className="text-center md:text-right text-[10px]">
-              Built with Qwen AI
-            </p>
+            <img
+              src="/logonobg.png"
+              alt="M-Chat"
+              className="w-5 h-5 opacity-70"
+            />
           </div>
         </div>
       </div>

@@ -9,6 +9,8 @@ import {
   ChevronDown,
   Share2,
   Check,
+  PanelLeft,
+  Download,
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useAutoScroll } from '@/hooks/useAutoScroll';
@@ -17,19 +19,29 @@ import { ChatBubble } from './ChatMessage';
 import { EmptyState } from './EmptyState';
 import { ChatInput } from './ChatInput';
 import { NotificationsPanel } from '@/components/ui/NotificationsPanel';
+import { PersonaSelector } from './PersonaSelector';
 
 export function ChatArea() {
-  const {
-    conversations,
-    activeConversationId,
-    aiStatus,
-    isGenerating,
-    wallet,
-    addToast,
-  } = useStore();
-  const conversation = conversations.find((c) => c.id === activeConversationId);
-  const messages = conversation?.messages || [];
+  // Use shallow selectors so this component only re-renders when its slice
+  // actually changes. Calling `useStore()` with a destructure re-renders on
+  // *every* store mutation, including high-frequency AI-stream updates that
+  // don't touch this surface.
+  const aiStatus = useStore((s) => s.aiStatus);
+  const isGenerating = useStore((s) => s.isGenerating);
+  const wallet = useStore((s) => s.wallet);
+  const addToast = useStore((s) => s.addToast);
+  const toggleSidebar = useStore((s) => s.toggleSidebar);
+  const conversation = useStore((s) =>
+    s.conversations.find((c) => c.id === s.activeConversationId)
+  );
+  const messages = conversation?.messages ?? [];
   const hasMessages = messages.length > 0;
+  // Use DB-authoritative count when available (synced convs), otherwise fall
+  // back to the local message array. This avoids showing e.g. "2 messages"
+  // for a brand-new chat while the assistant placeholder is mid-stream.
+  const messageCount = conversation?.synced && conversation.messageCount != null
+    ? conversation.messageCount
+    : messages.length;
 
   const { containerRef, isAtBottom, handleScroll, scrollToBottom } = useAutoScroll([
     messages.length,
@@ -69,29 +81,67 @@ export function ChatArea() {
     }
   };
 
+  const handleExportMarkdown = () => {
+    if (!conversation || messages.length === 0) return;
+    let md = `# ${conversation.title || 'Conversation'}\n\n`;
+    for (const m of messages) {
+      md += `**${m.role === 'user' ? 'User' : 'M-Chat'}**:\n${m.content}\n\n---\n\n`;
+    }
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(conversation.title || 'conversation').replace(/\s+/g, '-').toLowerCase()}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    addToast({ type: 'success', message: 'Conversation exported to Markdown' });
+  };
+
   const unlimited = wallet.daily_quota === -1;
 
   return (
     <div className="flex flex-col h-full relative bg-background">
-      {/* Header — hamburger removed: collapsed sidebar has its own expand trigger */}
-      <header className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-border/60 flex-shrink-0 bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+      {/* Header — overflow-safe on small screens. Persona/Export/Share hide
+          labels on mobile and drop entirely below 380px to keep the
+          conversation title readable. */}
+      <header className="relative z-10 flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-4 h-12 border-b border-border/60 flex-shrink-0 bg-background/80 backdrop-blur-sm">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <button
+            onClick={toggleSidebar}
+            className="lg:hidden inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex-shrink-0"
+            aria-label="Open sidebar"
+            title="Open sidebar"
+          >
+            <PanelLeft size={16} />
+          </button>
           <div className="min-w-0 flex-1">
             <h2 className="text-[13px] sm:text-sm font-medium truncate text-foreground">
               {conversation?.title || 'New Conversation'}
             </h2>
-            <p className="text-[10px] text-muted-foreground hidden sm:block">
-              {messages.length} {messages.length === 1 ? 'message' : 'messages'}
+            <p className="text-[10px] text-muted-foreground hidden sm:block truncate">
+              {messageCount} {messageCount === 1 ? 'message' : 'messages'}
               {!unlimited && wallet.daily_quota > 0 && ` · ${wallet.daily_used}/${wallet.daily_quota} prompts today`}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          <PersonaSelector />
           <NotificationsPanel />
+          <button
+            onClick={handleExportMarkdown}
+            disabled={!conversation || messages.length === 0}
+            className="hidden xs:inline-flex w-8 h-8 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
+            aria-label="Export conversation"
+            title="Export to Markdown"
+          >
+            <Download size={15} />
+          </button>
           <button
             onClick={handleShareConversation}
             disabled={!conversation}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
+            className="w-8 h-8 inline-flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
             aria-label="Share conversation"
             title="Copy conversation link"
           >
@@ -99,10 +149,11 @@ export function ChatArea() {
           </button>
           <div
             className={cn(
-              'flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium ml-1',
+              'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium ml-1 flex-shrink-0',
               s.bg,
               s.color
             )}
+            aria-label={`AI status: ${s.label}`}
           >
             <StatusIcon
               size={10}

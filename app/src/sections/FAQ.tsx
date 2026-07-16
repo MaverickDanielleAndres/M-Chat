@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 const faqs = [
   { q: 'What is M-Chat?', a: 'M-Chat is a complete AI workspace for chat, code, images, documents, and more. One platform, endless possibilities.' },
   { q: 'Do I need to sign up?', a: 'No. M-Chat works immediately with 20 free prompts per day. Signing up gives you 50 prompts and cloud sync.' },
-  { q: 'What AI model is used?', a: 'Qwen, one of the most advanced LLMs. Our architecture supports OpenAI, Claude, Gemini, and more coming soon.' },
+  { q: 'What AI model is used?', a: 'Gemini, one of the most advanced LLMs. Our architecture supports OpenAI, Claude, Gemini, and more coming soon.' },
   { q: 'Is my data secure?', a: 'Absolutely. Supabase with Row Level Security, JWT auth, and end-to-end encryption. SOC 2 compliant.' },
   { q: 'What files can I upload?', a: 'Images, PDFs, Word, Excel, CSV, JSON, Markdown, code files, and more. Pro users get video analysis.' },
   { q: 'How does Pro work?', a: 'Unlimited prompts, priority responses, image generation, voice conversations, and 10GB cloud storage.' },

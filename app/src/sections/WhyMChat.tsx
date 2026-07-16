@@ -30,7 +30,7 @@ const reasons = [
     id: 'agnostic',
     icon: Puzzle,
     label: 'Model Agnostic',
-    description: 'Switch AI providers seamlessly. Use Qwen today, OpenAI tomorrow. Zero vendor lock-in for your business logic.',
+    description: 'Switch AI providers seamlessly. Use Gemini today, OpenAI tomorrow. Zero vendor lock-in for your business logic.',
   },
   {
     id: 'sync',
