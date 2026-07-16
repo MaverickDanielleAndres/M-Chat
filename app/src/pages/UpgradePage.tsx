@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
   Check,
   Sparkles,
@@ -88,43 +88,94 @@ const PLANS: Plan[] = [
 
 export function UpgradePage() {
   const navigate = useNavigate();
-  const { isAuthed, profile, updateSettings, addToast } = useStore();
+  const [searchParams] = useSearchParams();
+  const { isAuthed, profile, refreshWallet, addToast, setUser } = useStore();
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [highlightedPlan, setHighlightedPlan] = useState<string | null>(
+    searchParams.get('plan')
+  );
+
+  // Auto-scroll to and pulse the requested plan when arriving with ?plan=
+  useEffect(() => {
+    const plan = searchParams.get('plan');
+    if (plan) {
+      setHighlightedPlan(plan);
+      const t = setTimeout(() => setHighlightedPlan(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams]);
+
+  // Plan -> DB tier mapping. The schema's subscription_tier enum also accepts
+  // 'registered', which we surface as the implicit tier for signed-in free
+  // users (the auth trigger sets this on signup).
+  const PLAN_TO_TIER: Record<string, 'registered' | 'pro' | 'premium'> = {
+    free: 'registered',
+    pro: 'pro',
+    premium: 'premium',
+  };
+
+  // Plan -> daily_quota and credit grant. Keep in sync with subscription_plans.
+  const PLAN_GRANTS: Record<string, { dailyQuota: number; credits: number }> = {
+    free: { dailyQuota: 20, credits: 50 },
+    pro: { dailyQuota: -1, credits: 2000 },
+    premium: { dailyQuota: -1, credits: 10000 },
+  };
 
   const handleUpgrade = async (planId: string) => {
-    if (planId === 'free') {
-      addToast({ type: 'info', message: 'You are on the Free plan' });
+    if (!isAuthed) {
+      addToast({ type: 'warning', message: 'Please sign in to upgrade' });
+      navigate('/login');
       return;
     }
     setLoadingPlan(planId);
     try {
-      // Placeholder for Stripe Checkout integration.
-      // In production, call your edge function /api/stripe/checkout
-      // which creates a Checkout Session and returns its URL.
-      // For now, simulate a successful upgrade.
-      await new Promise((r) => setTimeout(r, 900));
+      // Functional upgrade without payment provider: directly bump
+      // subscription_tier and grant credits. When Stripe is wired up,
+      // replace this block with a Stripe Checkout redirect.
+      const { supabase } = await import('@/lib/supabase');
+      const tier = PLAN_TO_TIER[planId] ?? 'registered';
+      const grant = PLAN_GRANTS[planId] ?? PLAN_GRANTS.free;
+
+      const { error: profileErr } = await supabase
+        .from('user_profiles')
+        .update({ subscription_tier: tier, updated_at: new Date().toISOString() })
+        .eq('id', profile?.id ?? '');
+      if (profileErr) throw profileErr;
+
+      const { error: walletErr } = await supabase.rpc('grant_credits', {
+        p_user_id: profile?.id,
+        p_amount: grant.credits,
+        p_type: 'grant',
+        p_description: `Upgrade to ${planId} (${billing})`,
+      });
+      if (walletErr) throw walletErr;
+
+      const { error: quotaErr } = await supabase
+        .from('credit_wallets')
+        .update({ daily_quota: grant.dailyQuota })
+        .eq('user_id', profile?.id ?? '');
+      if (quotaErr) throw quotaErr;
+
+      // Refresh store so the new tier + credits show up everywhere.
+      await refreshWallet();
+      if (profile?.id) {
+        await setUser(profile.id, { ...(profile as any), subscription_tier: tier });
+      }
       addToast({
         type: 'success',
-        message: `Stripe checkout would open for the ${planId} plan — payment integration coming soon.`,
+        message: `Upgraded to ${planId.charAt(0).toUpperCase() + planId.slice(1)} — enjoy your new prompts.`,
       });
-      // In a real integration:
-      // const res = await fetch('/api/stripe/checkout', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ plan_id: planId, billing }),
-      // });
-      // const { url } = await res.json();
-      // window.location.href = url;
+      navigate('/chat');
     } catch (err) {
-      addToast({ type: 'error', message: 'Could not start checkout. Please try again.' });
+      addToast({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Upgrade failed. Please try again.',
+      });
     } finally {
       setLoadingPlan(null);
     }
   };
-
-  // Local toast helper (re-uses the store)
-  void updateSettings;
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
@@ -202,17 +253,27 @@ export function UpgradePage() {
             const price = billing === 'monthly' ? plan.priceMonthly : Math.round(plan.priceYearly / 12);
             const isCurrent = (plan.id === 'free' && !isAuthed) ||
               (isAuthed && profile?.subscription_tier === plan.id);
+            const isHighlighted = highlightedPlan === plan.id;
             return (
               <motion.div
                 key={plan.id}
                 initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: i * 0.06 }}
+                animate={
+                  isHighlighted
+                    ? { opacity: 1, y: 0, scale: [1, 1.04, 1] }
+                    : { opacity: 1, y: 0 }
+                }
+                transition={
+                  isHighlighted
+                    ? { duration: 0.6, delay: i * 0.06 }
+                    : { duration: 0.4, delay: i * 0.06 }
+                }
                 className={cn(
                   'relative rounded-2xl border bg-card p-5 sm:p-6 flex flex-col',
                   plan.highlight
                     ? 'border-indigo-500 shadow-lg shadow-indigo-500/10'
-                    : 'border-border'
+                    : 'border-border',
+                  isHighlighted && 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-background'
                 )}
               >
                 {plan.highlight && (

@@ -8,25 +8,25 @@ export function LandingFooter() {
       title: "Product",
       links: [
         { label: "AI Chat", href: "/chat" },
-        { label: "Features", href: "#features" },
-        { label: "Pricing", href: "#pricing" },
+        { label: "Features", href: "/#capabilities" },
+        { label: "Pricing", href: "/#pricing" },
       ],
     },
     {
       title: "Resources",
       links: [
         { label: "Documentation", href: "/docs" },
-        { label: "API Reference", href: "#" },
-        { label: "Status", href: "#" },
+        { label: "API Reference", href: "/docs#api" },
+        { label: "Status", href: "/docs#status" },
       ],
     },
     {
       title: "Company",
       links: [
-        { label: "About", href: "#" },
-        { label: "Blog", href: "#" },
-        { label: "Contact", href: "#" },
-        { label: "Live Chat", href: "#", pulse: true },
+        { label: "About", href: "/docs#about" },
+        { label: "Blog", href: "/docs#blog" },
+        { label: "Contact", href: "mailto:hello@m-chat.ai" },
+        { label: "Live Chat", href: "/chat", pulse: true },
       ],
     },
   ];
@@ -44,9 +44,9 @@ export function LandingFooter() {
   ];
 
   const socialLinks = [
-    { icon: <Twitter size={20} />, label: "Twitter", href: "#" },
-    { icon: <Github size={20} />, label: "GitHub", href: "#" },
-    { icon: <Linkedin size={20} />, label: "LinkedIn", href: "#" },
+    { icon: <Twitter size={20} />, label: "Twitter", href: "https://twitter.com" },
+    { icon: <Github size={20} />, label: "GitHub", href: "https://github.com/MaverickDanielleAndres/M-Chat" },
+    { icon: <Linkedin size={20} />, label: "LinkedIn", href: "https://linkedin.com" },
   ];
 
   return (

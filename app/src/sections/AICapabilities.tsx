@@ -34,6 +34,47 @@ const capabilityIcons: Record<string, typeof Type> = {
   'Image Generation': Paintbrush, 'Charts': BarChart3, 'Diagrams': BarChart3,
 };
 
+/**
+ * Tailored starter prompts per capability. Each one is concrete enough that
+ * the model can demonstrate the feature on the very first response, so the
+ * user lands in the chat with something working — not a generic greeting.
+ */
+const STARTER_PROMPTS: Record<string, string> = {
+  'Text': 'Write a friendly welcome paragraph for a new M-Chat user in 3 sentences.',
+  'Images': 'Describe how image understanding works and what kinds of images you can analyze (charts, screenshots, photos, diagrams).',
+  'Video': 'Explain how you analyze video content frame by frame and what insights you can extract.',
+  'Audio': 'Describe how voice conversations work: speech-to-text input, text-to-speech responses, and the languages you support.',
+  'PDF': 'I will upload a PDF in my next message. Summarize its key points in 5 bullets once I do.',
+  'Word': 'I will upload a .docx file next. Extract its headings and the first paragraph of each section.',
+  'Excel': 'I will upload an .xlsx file next. Show me how to detect outliers and trends in the first numeric column.',
+  'PowerPoint': 'Outline a 6-slide deck on "Building a startup in 2026" — slide title + 3 bullets per slide.',
+  'CSV': 'I will upload a CSV next. Show me how to group rows by a chosen column and compute averages per group.',
+  'JSON': 'Convert this JSON array of products into a markdown table with columns name, price, stock:\n\n```json\n[{"name":"Pen","price":1.5,"stock":120},{"name":"Notebook","price":3.2,"stock":40}]\n```',
+  'XML': 'Show how to parse this XML and extract every <item> title:\n\n```xml\n<catalog><item><title>Book A</title></item><item><title>Book B</title></item></catalog>\n```',
+  'Markdown': 'Render this Markdown to a preview and explain its structure:\n\n# Heading\n- bullet 1\n- bullet 2\n\n```js\nconsole.log("hi")\n```',
+  'HTML': 'Build a responsive hero section using semantic HTML + Tailwind: a headline, a subhead, and a CTA button.',
+  'CSS': 'Write CSS for a glassmorphism card: blurred background, soft border, subtle shadow. No frameworks.',
+  'JavaScript': 'Write a debounce(fn, wait) helper in JavaScript with TypeScript types and a one-line usage example.',
+  'TypeScript': 'Type this function so the return type is inferred from a generic argument, then write a usage example.',
+  'React': 'Create a React + TypeScript component called <Counter /> with + and − buttons and a number display.',
+  'Next.js': 'Show me a Next.js 14 app-router server component that fetches data and renders a list.',
+  'Node.js': 'Write a minimal Express endpoint that returns JSON { ok: true } and listens on PORT (env or 3000).',
+  'Python': 'Write a Python script that reads a CSV with pandas and prints the top 5 rows plus column dtypes.',
+  'Java': 'Write a Java class that validates an email address with a static method returning boolean.',
+  'PHP': 'Write a PHP function that safely escapes HTML and one that reads a query string parameter.',
+  'SQL': 'Write a SQL query that returns the top 3 customers by total order amount from `orders` and `customers` tables.',
+  'OCR': 'I will upload an image of a receipt next. Extract each line item and the total into a structured table.',
+  'Translation': 'Translate this to Spanish, French, and Japanese:\n\n"Welcome to M-Chat. Let\'s get you started in seconds."',
+  'Summaries': 'Summarize the following passage in 3 bullet points (60 words max):\n\nThe Apollo program was a series of NASA missions in the 1960s and 1970s that landed humans on the Moon...',
+  'Brainstorming': 'Brainstorm 10 product names for an AI workspace that combines chat, code, and document analysis.',
+  'AI Reasoning': 'Solve step by step: A train leaves city A at 9am traveling 60 km/h. Another leaves city B (300 km away) at 10am toward A at 90 km/h. When do they meet?',
+  'Coding': 'Review this snippet and point out bugs and improvements:\n\n```js\nfunction add(a,b){return a+b}\nconsole.log(add(1,"2"))\n```',
+  'Debugging': 'Help me debug this error:\n\nTypeError: Cannot read properties of undefined (reading "map")\n  at UserList (UserList.tsx:12)',
+  'Image Generation': 'Generate an image of a serene mountain cabin at sunrise with mist over a glassy lake.',
+  'Charts': 'Recommend 3 chart types for visualizing monthly revenue per product category, and explain trade-offs.',
+  'Diagrams': 'Describe the architecture of a typical chat app as a diagram in Mermaid syntax (frontend → API → DB).',
+};
+
 export function AICapabilities() {
   const ref = useRef<HTMLDivElement>(null);
   const [isGridView, setIsGridView] = useState(true);
@@ -59,14 +100,14 @@ export function AICapabilities() {
 
   const CapabilityCard = ({ cap, className }: { cap: string, className?: string }) => {
     const Icon = capabilityIcons[cap] || Sparkles;
-    
+    const starterPrompt = STARTER_PROMPTS[cap] ?? `Show me what you can do with ${cap}.`;
     return (
-      <Link 
-        to={`/chat?prompt=${encodeURIComponent(`I want to explore the ${cap} capability`)}`} 
+      <Link
+        to={`/chat?prompt=${encodeURIComponent(starterPrompt)}`}
         className={cn("block focus:outline-none h-[120px] w-[200px]", className)}
       >
-        <PixelCard 
-          variant="blue" 
+        <PixelCard
+          variant="blue"
           gap={5}
           speed={40}
           colors="#4f46e5,#6366f1,#818cf8,#e0e7ff"
@@ -74,7 +115,7 @@ export function AICapabilities() {
         >
           <div className="relative z-10 w-full h-full flex flex-col items-start">
             <Icon size={22} strokeWidth={1.5} className="text-muted-foreground group-hover:text-[#818cf8] transition-colors mb-auto" />
-            
+
             <div className="mt-auto w-full pt-3 text-left">
                <span className="text-[15px] font-semibold text-foreground transition-colors block mb-1">{cap}</span>
                <span className="text-[11px] text-muted-foreground leading-snug block group-hover:text-muted-foreground transition-colors whitespace-normal">

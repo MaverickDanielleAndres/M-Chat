@@ -328,6 +328,7 @@ const SETTINGS_KEY_MAP: Record<string, string> = {
   fontFamily: 'font_family',
   customInstructions: 'custom_instructions',
   defaultModel: 'default_model',
+  webSearchEnabled: 'web_search_enabled',
 };
 
 export function settingsToDbRow(

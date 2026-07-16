@@ -22,7 +22,7 @@ import { detectImageGenerationIntent, generateImage } from '@/services/imageGen'
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB default
 
 export function ChatInput() {
-  const { sendMessage, isGenerating, stopGeneration, wallet, settings, addToast } = useStore();
+  const { sendMessage, isGenerating, stopGeneration, wallet, settings, updateSettings, addToast } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -35,6 +35,9 @@ export function ChatInput() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  // Read the optional web-search toggle from settings. We expose it on
+  // AppSettings so it persists with the rest of the user preferences.
+  const webSearchEnabled = Boolean((settings as any).webSearchEnabled);
 
   const sttSupported = SpeechToText.isSupported();
   const dailyQuota = wallet.daily_quota;
@@ -181,6 +184,14 @@ export function ChatInput() {
       zone.removeEventListener('drop', onDrop);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Listen for a global "open attachments" event from the EmptyState so the
+  // attach button there reuses this component's hidden file input.
+  useEffect(() => {
+    const handler = () => fileInputRef.current?.click();
+    window.addEventListener('mchat:open-attachments', handler);
+    return () => window.removeEventListener('mchat:open-attachments', handler);
   }, []);
 
   const displayValue = input + (interimTranscript ? ` ${interimTranscript}` : '');
@@ -334,12 +345,21 @@ export function ChatInput() {
           )}
         />
 
-        {/* Web search indicator */}
+        {/* Web search toggle — explicitly opt-in. Off by default so casual chats
+            stay cheap, on for queries that need fresh facts. Persisted in
+            app_settings via the camelCase→snake_case mapper. */}
         <button
           type="button"
-          disabled
-          className="w-9 h-9 flex items-center justify-center rounded-xl text-muted-foreground/40 flex-shrink-0 hidden sm:flex cursor-default"
-          title="Web search is built-in via Gemini grounding"
+          onClick={() => updateSettings({ webSearchEnabled: !webSearchEnabled })}
+          className={cn(
+            'w-9 h-9 inline-flex items-center justify-center rounded-xl flex-shrink-0 hidden sm:flex transition-colors',
+            webSearchEnabled
+              ? 'bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+          )}
+          title={webSearchEnabled ? 'Web search ON — click to disable' : 'Web search OFF — click to enable'}
+          aria-label={webSearchEnabled ? 'Disable web search' : 'Enable web search'}
+          aria-pressed={webSearchEnabled}
         >
           <Globe size={15} strokeWidth={1.5} />
         </button>

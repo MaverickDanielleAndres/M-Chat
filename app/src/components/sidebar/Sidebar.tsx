@@ -405,9 +405,7 @@ export function Sidebar() {
               <span>Balance: {wallet.balance}</span>
               {(tier === 'free' || tier === 'registered') ? (
                 <button
-                  onClick={() =>
-                    addToast({ type: 'info', message: 'Upgrade flow coming soon' })
-                  }
+                  onClick={() => navigate('/upgrade')}
                   className="text-indigo-400 hover:underline"
                 >
                   Upgrade
@@ -579,6 +577,7 @@ function ConvItem({
   const isEditing = editingId === conv.id;
   const menuOpen = menuOpenId === conv.id;
   const addToast = useStore((s) => s.addToast);
+  const updateConversation = useStore((s) => s.updateConversation);
 
   const handleShare = async () => {
     onCloseMenu();
@@ -591,9 +590,17 @@ function ConvItem({
     }
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     onCloseMenu();
-    addToast({ type: 'info', message: 'Archive coming soon' });
+    try {
+      await updateConversation(conv.id, { archived: true } as any);
+      addToast({ type: 'success', message: 'Conversation archived' });
+    } catch (err) {
+      addToast({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to archive',
+      });
+    }
   };
 
   return (

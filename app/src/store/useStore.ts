@@ -1016,7 +1016,14 @@ export const useStore = create<StoreState>()(
           try {
             await dbUpdateMessage(msgId, { liked });
           } catch (err) {
+            // Surface the failure so the user knows their click didn't
+            // persist; otherwise the optimistic local update hides a real
+            // sync error (RLS denial, network drop, etc.).
             console.warn('[M-Chat] likeMessage sync failed', err);
+            get().addToast({
+              type: 'error',
+              message: 'Could not save your reaction. Please try again.',
+            });
           }
         }
       },
@@ -1038,6 +1045,10 @@ export const useStore = create<StoreState>()(
             await dbDeleteMessage(msgId);
           } catch (err) {
             console.warn('[M-Chat] deleteMessage sync failed', err);
+            get().addToast({
+              type: 'error',
+              message: 'Message deleted locally — server sync failed.',
+            });
           }
         }
       },
@@ -1090,7 +1101,10 @@ export const useStore = create<StoreState>()(
           conversations: state.conversations,
           settings: state.settings,
           promptCount: state.promptCount,
+          wallet: state.wallet,
+          profile: state.profile,
           exportedAt: Date.now(),
+          schema: 2,
         };
         return JSON.stringify(data, null, 2);
       },
@@ -1098,15 +1112,20 @@ export const useStore = create<StoreState>()(
       importData: (data) => {
         try {
           const parsed = JSON.parse(data);
-          if (parsed.conversations && Array.isArray(parsed.conversations)) {
-            set({
-              conversations: parsed.conversations,
-              settings: parsed.settings || defaultSettings,
-              promptCount: parsed.promptCount || 0,
-            });
-            return true;
+          if (!parsed?.conversations || !Array.isArray(parsed.conversations)) {
+            return false;
           }
-          return false;
+          set((s) => ({
+            conversations: parsed.conversations,
+            settings: { ...defaultSettings, ...(parsed.settings ?? {}) },
+            promptCount: parsed.promptCount ?? s.promptCount,
+            wallet: parsed.wallet ?? s.wallet,
+          }));
+          // Best-effort: write settings back to DB if we're authed.
+          if (isSupabaseConfigured && get().userId && parsed.settings) {
+            upsertSettings(get().userId!, parsed.settings as Record<string, unknown>);
+          }
+          return true;
         } catch {
           return false;
         }

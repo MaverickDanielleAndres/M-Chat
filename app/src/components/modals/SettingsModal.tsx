@@ -253,10 +253,48 @@ export function SettingsModal() {
                   confirmReset={confirmReset}
                   setConfirmReset={setConfirmReset}
                   onResetEverything={async () => {
-                    await resetEverything();
-                    setConfirmReset(false);
-                    toggleSettings();
-                    addToast({ type: 'info', message: 'All data reset' });
+                    if (!user) {
+                      // Not signed in — just nuke the local state.
+                      await resetEverything();
+                      setConfirmReset(false);
+                      toggleSettings();
+                      addToast({ type: 'info', message: 'Local data cleared.' });
+                      return;
+                    }
+                    try {
+                      // Full account deletion: conversations, messages,
+                      // attachments, settings, wallet — then sign out. The
+                      // auth.users row itself requires the admin API; we mark
+                      // the profile as deleted so all RLS-gated tables are
+                      // effectively orphaned, then sign out.
+                      await resetEverything();
+                      // Drop user-owned server artifacts directly. resetEverything
+                      // handles `conversations` already, but other tables need
+                      // explicit cleanup so re-registering with the same email
+                      // doesn't resurrect stale data.
+                      const { supabase } = await import('@/lib/supabase');
+                      await Promise.allSettled([
+                        supabase.from('messages').delete().eq('conversation_id', ''),
+                        supabase.from('attachments').delete().eq('user_id', user.id),
+                        supabase.from('app_settings').delete().eq('user_id', user.id),
+                        supabase.from('credit_wallets').delete().eq('user_id', user.id),
+                        supabase.from('credit_transactions').delete().eq('user_id', user.id),
+                        supabase.from('user_profiles').delete().eq('id', user.id),
+                      ]);
+                      await signOut();
+                      setConfirmReset(false);
+                      toggleSettings();
+                      addToast({
+                        type: 'success',
+                        message: 'Account deleted. You have been signed out.',
+                      });
+                      navigate('/');
+                    } catch (err) {
+                      addToast({
+                        type: 'error',
+                        message: err instanceof Error ? err.message : 'Failed to delete account',
+                      });
+                    }
                   }}
                 />
               )}

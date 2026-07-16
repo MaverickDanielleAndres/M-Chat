@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Shield, Coins, Loader2, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store/useStore';
+import { IconButton } from '@/components/ui/IconButton';
 
 
 interface UserData {
@@ -126,9 +127,9 @@ export function UserManagementModal({ user, onClose, onUpdated }: Props) {
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/[0.04] text-[var(--m-text-muted)] hover:text-white transition-colors">
+            <IconButton size="xs" variant="subtle" onClick={onClose} aria-label="Close">
               <X size={16} />
-            </button>
+            </IconButton>
           </div>
 
           {/* Body */}

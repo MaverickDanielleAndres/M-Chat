@@ -64,6 +64,8 @@ export interface AppSettings {
   fontFamily: 'sans' | 'serif' | 'mono';
   customInstructions: string;
   defaultModel?: string;
+  /** When true, Gemini is asked to ground responses with web search. */
+  webSearchEnabled?: boolean;
 }
 
 export interface DeveloperStats {
