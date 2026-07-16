@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Shield, Users, MessageSquare, TrendingUp, Activity, Settings, BarChart3, ArrowLeft, Loader2, Crown, Zap, HardDrive, Eye, ListTodo } from 'lucide-react';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { supabase } from '@/lib/supabase';
+import { useStore } from '@/store/useStore';
 import { cn } from '@/lib/utils';
 import { UserManagementModal } from '@/components/admin/UserManagementModal';
 
@@ -24,6 +25,8 @@ export function AdminDashboard() {
   const [plans, setPlans] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [systemConfig, setSystemConfig] = useState<any[]>([]);
+
+  const addToast = useStore((s) => s.addToast);
 
 
   const fetchUsers = async () => {
@@ -290,7 +293,40 @@ export function AdminDashboard() {
                           <span className="text-[var(--m-text-primary)]">{p.includes_image_gen ? 'Yes' : 'No'}</span>
                         </div>
                       </div>
-                      <button className="w-full mt-2 py-1.5 rounded-lg border border-white/[0.04] text-[11px] text-[var(--m-text-muted)] hover:bg-white/[0.02] transition-colors">
+                      <button
+                        onClick={() => {
+                          const daily = prompt(`Daily prompts for "${p.name}" (-1 for unlimited):`, String(p.max_prompts_daily));
+                          if (daily === null) return;
+                          const credits = prompt(`Monthly credits for "${p.name}":`, String(p.monthly_credits));
+                          if (credits === null) return;
+                          (async () => {
+                            try {
+                              const { error } = await supabase
+                                .from('subscription_plans')
+                                .update({
+                                  max_prompts_daily: Number(daily),
+                                  monthly_credits: Number(credits),
+                                  updated_at: new Date().toISOString(),
+                                })
+                                .eq('id', p.id);
+                              if (error) throw error;
+                              addToast({ type: 'success', message: `Plan "${p.name}" updated.` });
+                              // Refresh local plan list so the change is visible
+                              const { data: refreshed } = await supabase
+                                .from('subscription_plans')
+                                .select('*')
+                                .order('price_monthly', { ascending: true });
+                              if (refreshed) setPlans(refreshed);
+                            } catch (err) {
+                              addToast({
+                                type: 'error',
+                                message: err instanceof Error ? err.message : 'Failed to update plan',
+                              });
+                            }
+                          })();
+                        }}
+                        className="w-full mt-2 py-1.5 rounded-lg border border-white/[0.04] text-[11px] text-[var(--m-text-muted)] hover:bg-white/[0.02] transition-colors"
+                      >
                         Edit Plan Limits
                       </button>
                     </div>

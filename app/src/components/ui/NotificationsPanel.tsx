@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, CheckCircle2, Info, AlertCircle, Sparkles, Trash2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/store/useStore';
+import { IconButton } from '@/components/ui/IconButton';
 
 export type NotificationItem = {
   id: string;
@@ -104,16 +105,17 @@ export function NotificationsPanel() {
 
   return (
     <div className="relative" ref={ref}>
-      <button
+      <IconButton
+        size="sm"
         onClick={() => setOpen((v) => !v)}
-        className="relative w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
         aria-label="Notifications"
+        className="relative"
       >
         <Bell size={16} />
         {unread > 0 && (
           <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-indigo-500" />
         )}
-      </button>
+      </IconButton>
 
       <AnimatePresence>
         {open && (
@@ -132,24 +134,26 @@ export function NotificationsPanel() {
                 </p>
               </div>
               <div className="flex items-center gap-1">
-                <button
+                <IconButton
+                  size="xs"
+                  variant="ghost"
                   onClick={markAllRead}
                   disabled={unread === 0}
-                  className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
                   title="Mark all read"
                   aria-label="Mark all read"
                 >
                   <Check size={13} />
-                </button>
-                <button
+                </IconButton>
+                <IconButton
+                  size="xs"
+                  variant="ghost"
                   onClick={clearAll}
                   disabled={items.length === 0}
-                  className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
                   title="Clear"
                   aria-label="Clear all"
                 >
                   <Trash2 size={13} />
-                </button>
+                </IconButton>
               </div>
             </div>
             <div className="max-h-80 overflow-y-auto">

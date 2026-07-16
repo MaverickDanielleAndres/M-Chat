@@ -304,9 +304,9 @@ export function SignupPage() {
           {/* Terms */}
           <p className="text-[11px] text-[var(--m-text-muted)] text-center leading-relaxed">
             By continuing, you agree to our{' '}
-            <a href="#" className="hover:text-[var(--m-text-secondary)] underline underline-offset-2">Terms</a>
+            <a href="/docs#terms" className="hover:text-[var(--m-text-secondary)] underline underline-offset-2">Terms</a>
             {' '}and{' '}
-            <a href="#" className="hover:text-[var(--m-text-secondary)] underline underline-offset-2">Privacy Policy</a>.
+            <a href="/docs#privacy" className="hover:text-[var(--m-text-secondary)] underline underline-offset-2">Privacy Policy</a>.
           </p>
 
           {/* Switch to login */}

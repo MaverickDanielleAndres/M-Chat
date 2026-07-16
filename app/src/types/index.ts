@@ -32,6 +32,8 @@ export interface Conversation {
   system_prompt?: string;
   userId?: string | null;
   synced?: boolean;
+  /** DB-authoritative message count (denormalized on the conversation row). */
+  messageCount?: number;
 }
 
 
@@ -62,6 +64,8 @@ export interface AppSettings {
   fontFamily: 'sans' | 'serif' | 'mono';
   customInstructions: string;
   defaultModel?: string;
+  /** When true, Gemini is asked to ground responses with web search. */
+  webSearchEnabled?: boolean;
 }
 
 export interface DeveloperStats {

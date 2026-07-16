@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, ArrowRight } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useNavigate } from 'react-router';
+import { IconButton } from '@/components/ui/IconButton';
 
 export function LimitModal() {
   const { limitModalOpen, toggleLimitModal, wallet } = useStore();
@@ -36,12 +37,14 @@ export function LimitModal() {
               <h2 className="text-base font-semibold flex items-center gap-2">
                 <Sparkles size={16} className="text-indigo-500" /> Upgrade to keep going
               </h2>
-              <button
+              <IconButton
+                size="xs"
+                variant="ghost"
                 onClick={toggleLimitModal}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+                aria-label="Close"
               >
                 <X size={15} />
-              </button>
+              </IconButton>
             </div>
 
             <div className="px-5 py-3">

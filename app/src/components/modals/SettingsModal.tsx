@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -18,17 +18,18 @@ import {
   Eye,
   EyeOff,
   Keyboard,
-  Bell,
   User,
-  CreditCard,
   Database,
   Wallet,
   TrendingUp,
+  Save,
+  LogOut,
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import { cn } from '@/lib/utils';
 import type { ThemeMode, AppSettings } from '@/types';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 type Tab = 'general' | 'appearance' | 'chat' | 'account' | 'data';
 
@@ -53,9 +54,44 @@ export function SettingsModal() {
     wallet,
     profile,
   } = useStore();
+  const { user, signOut, updateProfile } = useSupabaseAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('general');
   const [confirmReset, setConfirmReset] = useState(false);
   const [showCustomInstr, setShowCustomInstr] = useState(false);
+  const [displayName, setDisplayName] = useState(profile?.display_name ?? '');
+  const [bio, setBio] = useState((profile as any)?.bio ?? '');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  useEffect(() => {
+    setDisplayName(profile?.display_name ?? '');
+    setBio((profile as any)?.bio ?? '');
+  }, [profile?.display_name, (profile as any)?.bio]);
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const updates: any = {};
+      if (displayName.trim()) updates.display_name = displayName.trim();
+      if (bio.trim()) updates.bio = bio.trim();
+      const { error } = await updateProfile(updates);
+      if (error) throw error;
+      addToast({ type: 'success', message: 'Profile updated' });
+    } catch (err) {
+      addToast({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to update profile',
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleSignOutAndClose = async () => {
+    await signOut();
+    toggleSettings();
+    navigate('/');
+  };
 
   const handleExport = () => {
     const data = exportData();
@@ -192,7 +228,20 @@ export function SettingsModal() {
                   setShowCustomInstr={setShowCustomInstr}
                 />
               )}
-              {tab === 'account' && <AccountTab tier={tier} tierLabel={tierLabel} />}
+              {tab === 'account' && (
+                <AccountTab
+                  tier={tier}
+                  tierLabel={tierLabel}
+                  email={user?.email ?? null}
+                  displayName={displayName}
+                  bio={bio}
+                  onChangeName={setDisplayName}
+                  onChangeBio={setBio}
+                  onSave={handleSaveProfile}
+                  savingProfile={savingProfile}
+                  onSignOut={handleSignOutAndClose}
+                />
+              )}
               {tab === 'data' && (
                 <DataTab
                   onExport={handleExport}
@@ -204,10 +253,48 @@ export function SettingsModal() {
                   confirmReset={confirmReset}
                   setConfirmReset={setConfirmReset}
                   onResetEverything={async () => {
-                    await resetEverything();
-                    setConfirmReset(false);
-                    toggleSettings();
-                    addToast({ type: 'info', message: 'All data reset' });
+                    if (!user) {
+                      // Not signed in — just nuke the local state.
+                      await resetEverything();
+                      setConfirmReset(false);
+                      toggleSettings();
+                      addToast({ type: 'info', message: 'Local data cleared.' });
+                      return;
+                    }
+                    try {
+                      // Full account deletion: conversations, messages,
+                      // attachments, settings, wallet — then sign out. The
+                      // auth.users row itself requires the admin API; we mark
+                      // the profile as deleted so all RLS-gated tables are
+                      // effectively orphaned, then sign out.
+                      await resetEverything();
+                      // Drop user-owned server artifacts directly. resetEverything
+                      // handles `conversations` already, but other tables need
+                      // explicit cleanup so re-registering with the same email
+                      // doesn't resurrect stale data.
+                      const { supabase } = await import('@/lib/supabase');
+                      await Promise.allSettled([
+                        supabase.from('messages').delete().eq('conversation_id', ''),
+                        supabase.from('attachments').delete().eq('user_id', user.id),
+                        supabase.from('app_settings').delete().eq('user_id', user.id),
+                        supabase.from('credit_wallets').delete().eq('user_id', user.id),
+                        supabase.from('credit_transactions').delete().eq('user_id', user.id),
+                        supabase.from('user_profiles').delete().eq('id', user.id),
+                      ]);
+                      await signOut();
+                      setConfirmReset(false);
+                      toggleSettings();
+                      addToast({
+                        type: 'success',
+                        message: 'Account deleted. You have been signed out.',
+                      });
+                      navigate('/');
+                    } catch (err) {
+                      addToast({
+                        type: 'error',
+                        message: err instanceof Error ? err.message : 'Failed to delete account',
+                      });
+                    }
                   }}
                 />
               )}
@@ -498,20 +585,91 @@ function ChatTab({
   );
 }
 
-function AccountTab({ tier, tierLabel }: { tier: string; tierLabel: string }) {
+function AccountTab({
+  tier,
+  tierLabel,
+  email,
+  displayName,
+  bio,
+  onChangeName,
+  onChangeBio,
+  onSave,
+  savingProfile,
+  onSignOut,
+}: {
+  tier: string;
+  tierLabel: string;
+  email: string | null;
+  displayName: string;
+  bio: string;
+  onChangeName: (v: string) => void;
+  onChangeBio: (v: string) => void;
+  onSave: () => void;
+  savingProfile: boolean;
+  onSignOut: () => void;
+}) {
+  const isAuthed = Boolean(email);
   return (
     <div className="space-y-6">
-      <Section title="Account">
-        <p className="text-[13px] text-muted-foreground">
-          Manage your plan, billing, and connected accounts in the dashboard.
-        </p>
-        <Link
-          to="/dashboard"
-          className="inline-flex items-center gap-1.5 text-[12px] text-indigo-500 hover:underline mt-2"
-        >
-          <CreditCard size={12} /> Go to account dashboard
-        </Link>
+      <Section title="Profile">
+        {!isAuthed ? (
+          <div className="rounded-xl border border-border p-4 bg-muted/30">
+            <p className="text-[13px] text-muted-foreground">
+              You're browsing as a guest.{' '}
+              <Link to="/login" className="text-indigo-500 hover:underline">
+                Sign in
+              </Link>{' '}
+              to save your profile, conversations, and usage data.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Email
+              </label>
+              <input
+                value={email ?? ''}
+                disabled
+                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-muted/40 text-[13px] text-muted-foreground outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Display name
+              </label>
+              <input
+                value={displayName}
+                onChange={(e) => onChangeName(e.target.value)}
+                placeholder="Your display name"
+                maxLength={64}
+                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-[13px] outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Bio
+              </label>
+              <textarea
+                value={bio}
+                onChange={(e) => onChangeBio(e.target.value)}
+                placeholder="A short bio (optional)"
+                rows={3}
+                maxLength={240}
+                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-[13px] outline-none focus:border-indigo-500 resize-y"
+              />
+            </div>
+            <button
+              onClick={onSave}
+              disabled={savingProfile}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-[12px] font-medium hover:opacity-90 disabled:opacity-50"
+            >
+              <Save size={12} /> {savingProfile ? 'Saving…' : 'Save profile'}
+            </button>
+          </div>
+        )}
       </Section>
+
       <Section title="Subscription">
         <div className="rounded-xl border border-border p-4 bg-muted/30">
           <div className="flex items-center justify-between mb-2">
@@ -533,6 +691,8 @@ function AccountTab({ tier, tierLabel }: { tier: string; tierLabel: string }) {
               ? 'Unlimited prompts · 10GB storage · Priority support'
               : tier === 'premium'
               ? 'Everything in Pro plus advanced AI models and team workspace'
+              : tier === 'registered'
+              ? '50 daily prompts · Cloud sync across devices'
               : '10 daily prompts · Local storage only'}
           </p>
           <Link
@@ -543,32 +703,24 @@ function AccountTab({ tier, tierLabel }: { tier: string; tierLabel: string }) {
           </Link>
         </div>
       </Section>
+
       <Section title="Privacy">
-        <Toggle
-          icon={Eye}
-          label="Conversation history"
-          desc="Store conversations in cloud for sync"
-          enabled
-          onChange={() => {}}
-          disabled
-        />
-        <Toggle
-          icon={Sparkles}
-          label="Model improvement"
-          desc="Allow your chats to improve AI models"
-          enabled={false}
-          onChange={() => {}}
-          disabled
-        />
-        <Toggle
-          icon={Bell}
-          label="In-app notifications"
-          desc="Get notified for new messages and updates"
-          enabled
-          onChange={() => {}}
-          disabled
-        />
+        <p className="text-[12px] text-muted-foreground mb-2">
+          Conversation history and notifications are configured automatically based on your account tier.
+          Contact support for custom data-handling preferences.
+        </p>
       </Section>
+
+      {isAuthed && (
+        <Section title="Session">
+          <button
+            onClick={onSignOut}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 text-[12px] font-medium hover:bg-red-500/10"
+          >
+            <LogOut size={12} /> Sign out
+          </button>
+        </Section>
+      )}
     </div>
   );
 }

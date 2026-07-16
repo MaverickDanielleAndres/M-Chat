@@ -108,7 +108,7 @@ export function UserDashboard() {
                     <Crown size={20} strokeWidth={1.5} style={{ color: tierColors[profile?.subscription_tier || 'free'] }} />
                   </div>
                   {profile?.subscription_tier === 'free' && (
-                    <Link to="/#pricing" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-medium bg-[var(--m-accent-blue)] text-white hover:opacity-90 transition-opacity">
+                    <Link to="/upgrade" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-medium bg-[var(--m-accent-blue)] text-white hover:opacity-90 transition-opacity">
                       <Zap size={12} strokeWidth={1.5} /> Upgrade
                     </Link>
                   )}
